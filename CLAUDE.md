@@ -39,6 +39,11 @@ starting a milestone; this file only holds the rules that must never be broken.
 - **Trips and gear** (src/trips.ts, src/gear.ts, pure and tested) live in `mta.data.trips` / `.gear`.
   Route links are http(s) only (schema-checked, also on import) and open with `rel="noopener noreferrer"`.
   The gear starter list is `starterGear` in plan.json, not hard-coded.
+- **Rest timer and charts** (src/rest.ts, src/progress.ts, pure and tested). The plan gives no gym rest
+  lengths, so none are invented: presets plus my last choice (`mta.meta`), and only the plan's own
+  "2 min rest" is preselected (Thursday). Charts are hand-made SVG on a weeks 1–12 axis; weeks come from
+  log dates through the effective plan. Chart colours are Primer data tokens (pine, purple), checked
+  against the dark canvas with the dataviz palette validator.
 - **Offline-first PWA** (vite-plugin-pwa, registerType 'prompt'): a new version only reloads when I
   tap Reload, never on the log screen. Device-only info (last export) lives in `mta.meta`.
 - Keep it simple: React + plain CSS, no state library, no router, no new dependencies without a reason.

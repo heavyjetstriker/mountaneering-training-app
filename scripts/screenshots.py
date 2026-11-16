@@ -475,6 +475,68 @@ with sync_playwright() as p:
     assert m6.get_by_role("row", name="Gear items 0 6").is_visible()
     m6.get_by_role("dialog").get_by_role("button", name="Cancel").click()
 
+    # ---- milestone 7: rest timer and progress charts ----
+    r7 = new_page(SEED_ONCE)
+    r7.goto(BASE + "?date=2026-11-23")  # week 2 Monday
+    r7.get_by_role("button", name="Log session").first.click()
+    shot(r7, "m7-strength-timer-idle", full=False)
+    r7.evaluate("window.mtaRestPreview(3)")
+    r7.get_by_role("button", name="Start rest, 0:03").click()
+    r7.wait_for_timeout(1200)
+    assert r7.get_by_role("timer").is_visible()
+    shot(r7, "m7-timer-running", full=False)
+    r7.wait_for_timeout(2600)
+    assert r7.get_by_text("Rest over").is_visible()
+    shot(r7, "m7-timer-over", full=False)
+    r7.get_by_label("Minutes").fill("55")
+    r7.get_by_role("button", name="Save log").click()
+    r7.get_by_role("button", name="Week", exact=True).click()
+    assert r7.locator(".chart-meta", has_text="Week 2: 0.9 h").is_visible(), "strength minutes not in the hours chart"
+
+    r7.goto(BASE + "?date=2026-11-26")  # week 2 Thursday: the plan says 2 min rest
+    r7.get_by_role("button", name="Log session").first.click()
+    assert r7.get_by_role("radio", name="Rest 2:00").get_attribute("aria-checked") == "true"
+    shot(r7, "m7-thursday-timer", full=False)
+
+    # Five weeks of logs for the charts.
+    def chart_logs():
+        logs = []
+        starts = ["2026-11-16", "2026-11-23", "2026-11-30", "2026-12-07", "2026-12-14"]
+        import datetime as dt
+        for w, mon in enumerate(starts):
+            d = dt.date.fromisoformat(mon)
+            day = lambda k: (d + dt.timedelta(days=k)).isoformat()
+            sq = [80, 82.5, 85, 80, 87.5][w]
+            dl = [100, 105, 110, 100, 115][w]
+            logs += [
+                {"id": f"a{w}", "date": day(0), "week": w + 1, "type": "strengthA", "status": "done", "minutes": 55,
+                 "sets": sets("back-squat", "Back squat", [(5, sq)] * 3), "savedAt": day(0) + "T19:00:00Z"},
+                {"id": f"z{w}", "date": day(1), "week": w + 1, "type": "zone2Long" if w else "testDriftVertical",
+                 "status": "done", "minutes": [90, 75, 80, 50, 85][w], "savedAt": day(1) + "T19:00:00Z"},
+                {"id": f"b{w}", "date": day(2), "week": w + 1, "type": "strengthB", "status": "done", "minutes": 50,
+                 "sets": sets("deadlift", "Deadlift", [(4, dl)] * 3), "savedAt": day(2) + "T19:00:00Z"},
+                {"id": f"h{w}", "date": day(5), "week": w + 1, "type": "longHike", "status": "done",
+                 "minutes": [120, 150, 155, 120, 180][w], "packKg": [6, 6, 8, 6, 8][w], "savedAt": day(5) + "T19:00:00Z"},
+            ]
+        return logs
+
+    c7 = new_page(seed_with(dict(EMPTY, logs=chart_logs())))
+    c7.goto(BASE + "?date=2026-12-17")
+    c7.get_by_role("button", name="Week", exact=True).click()
+    c7.wait_for_timeout(300)
+    assert c7.locator(".chart-meta", has_text="Week 5: squat 87.5 kg, deadlift 115 kg").is_visible()
+    shot(c7, "m7-week-progress")
+    c7.locator("svg.chart").first.locator("rect.chart-hit").nth(2).click()
+    assert c7.get_by_role("heading", name="Week 3").is_visible(), "tapping week 3 didn't switch weeks"
+    c7.get_by_role("heading", name="Progress").scroll_into_view_if_needed()
+    shot(c7, "m7-progress-week3", full=False)
+
+    e7 = new_page(seed_with(EMPTY))
+    e7.goto(BASE + "?date=2026-11-17")
+    e7.get_by_role("button", name="Week", exact=True).click()
+    assert e7.get_by_text("Log a few sessions to see this.").count() == 3
+    shot(e7, "m7-progress-empty")
+
     bad = new_page(CORRUPT)
     bad.goto(BASE + "?date=2026-11-16")
     shot(bad, "log-corrupt-data")

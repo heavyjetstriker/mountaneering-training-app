@@ -16,6 +16,7 @@ export const StrengthFormSchema = z.object({
   ),
   note: z.string(),
   status: z.enum(['done', 'partial']),
+  minutes: z.string().optional(), // milestone 7; older drafts have none
 });
 export type StrengthForm = z.infer<typeof StrengthFormSchema>;
 

@@ -4,6 +4,7 @@ import type { Day, Plan } from '../schema';
 import { DAY_NAMES, DAY_ORDER, shortDate } from '../dates';
 import { dateOf, getWeek, positionOn, sessionTypesFor, TOTAL_WEEKS } from '../plan';
 import { useWeekContext } from '../useWeekContext';
+import { ProgressCharts } from '../components/charts/ProgressCharts';
 import { DayHeader } from '../components/DayHeader';
 import { DaySessions } from '../components/DaySessions';
 import { WeekProgress } from '../components/WeekProgress';
@@ -110,6 +111,7 @@ export function WeekView({ plan, today }: { plan: Plan; today: string }) {
           );
         })}
       </ul>
+      <ProgressCharts plan={plan} week={week} onSelect={setWeek} />
     </section>
   );
 }

@@ -11,6 +11,7 @@ import type { LogTarget } from '../logContext';
 import { Dialog } from '../components/Dialog';
 import { Segmented } from '../components/Segmented';
 import { LogFrame, numberText, parseNumber } from './LogFrame';
+import { RestTimer } from '../components/RestTimer';
 
 type Row = StrengthForm['boxes'][number]['rows'][number];
 type ResolvedExercise = Exercise & { originalSets: number };
@@ -80,12 +81,18 @@ export function StrengthLog({ plan, target, onClose }: { plan: Plan; target: Log
           rows: mine.map((s) => ({ reps: numberText(s.reps), kg: numberText(s.kg) })),
         });
       }
-      return { boxes, note: existing.note ?? '', status: existing.status === 'partial' ? 'partial' : 'done' };
+      return {
+        boxes,
+        note: existing.note ?? '',
+        status: existing.status === 'partial' ? 'partial' : 'done',
+        minutes: numberText(existing.minutes),
+      };
     }
     return {
       boxes: (session.exercises ?? []).map((p) => ({ plannedId: p.id, exerciseId: p.id, rows: prefillRows(p, logs, date) })),
       note: '',
       status: 'done',
+      minutes: '',
     };
   });
 
@@ -162,6 +169,7 @@ export function StrengthLog({ plan, target, onClose }: { plan: Plan; target: Log
       }
     }
     const note = form.note.trim();
+    const minutes = parseNumber(form.minutes ?? '');
     const log: SessionLog = {
       id: existing?.id ?? newId(),
       date,
@@ -171,6 +179,7 @@ export function StrengthLog({ plan, target, onClose }: { plan: Plan; target: Log
       sets,
       ...(Object.keys(swaps).length ? { swaps } : {}),
       ...(note ? { note } : {}),
+      ...(minutes !== null && minutes > 0 ? { minutes: Math.round(minutes) } : {}),
       savedAt: new Date().toISOString(),
     };
     const store = getStore();
@@ -205,6 +214,7 @@ export function StrengthLog({ plan, target, onClose }: { plan: Plan; target: Log
         onClose();
       }}
       onDelete={remove}
+      bar={<RestTimer />}
     >
       {restored && <p className="text-muted text-small">Restored your unsaved log from earlier.</p>}
 
@@ -294,6 +304,16 @@ export function StrengthLog({ plan, target, onClose }: { plan: Plan; target: Log
       })}
 
       <div className="box">
+        <label className="box-row field">
+          <span className="field-label">Minutes</span>
+          <input
+            className="input input--num"
+            inputMode="numeric"
+            value={form.minutes ?? ''}
+            onChange={(e) => setForm((f) => ({ ...f, minutes: e.target.value }))}
+          />
+          <span className="text-muted text-small">optional</span>
+        </label>
         <label className="box-row field field--stacked">
           <span className="field-label">Note</span>
           <textarea

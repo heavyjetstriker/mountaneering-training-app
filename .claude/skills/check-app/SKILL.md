@@ -52,3 +52,7 @@ Report what you checked and anything that still looks off.
     errors including a `javascript:` link, the route on the 21 Nov hike card, "Plan a route" on 28 Nov,
     Date passed → Mark done → Done totals, delete confirm, Gear empty → starter list → ticked and
     edited, and the import dialog's Trips and Gear items rows.
+11. Rest timer and charts (milestone 7): the `m7-*` shots: strength log with the timer idle, running and
+    over (`window.mtaRestPreview(3)` makes it a 3 s timer), Minutes saved and shown in the week 2 hours
+    figure, Thursday with 2:00 preselected from the plan, the Week tab Progress charts with five weeks of
+    generated logs, tapping week 3 on a chart, and the empty state.

@@ -15,6 +15,7 @@ export interface BackupFile {
 /** Device-only info (key mta.meta). Never exported. */
 export interface Meta {
   lastExportAt?: string; // ISO timestamp
+  restSeconds?: number; // last rest timer length on this device
 }
 
 export function makeBackup(data: AppData, now: Date): BackupFile {

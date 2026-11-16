@@ -1,4 +1,4 @@
-// Device-only info (mta.meta): when I last exported. Not part of AppData, never exported.
+// Device-only info (mta.meta): when I last exported, the rest timer length. Not part of AppData, never exported.
 import { useSyncExternalStore } from 'react';
 import { browserStorage } from './store';
 import type { Meta } from './backup';
@@ -11,22 +11,32 @@ function read(): Meta {
   if (cache) return cache;
   try {
     const parsed: unknown = JSON.parse(browserStorage().getItem(META_KEY) ?? '{}');
-    const last = (parsed as Meta | null)?.lastExportAt;
-    cache = typeof last === 'string' ? { lastExportAt: last } : {};
+    const p = (parsed ?? {}) as Meta;
+    cache = {};
+    if (typeof p.lastExportAt === 'string') cache.lastExportAt = p.lastExportAt;
+    if (typeof p.restSeconds === 'number' && p.restSeconds > 0 && p.restSeconds <= 600) cache.restSeconds = p.restSeconds;
   } catch {
     cache = {};
   }
   return cache;
 }
 
-export function recordExport(at: Date = new Date()) {
-  cache = { ...read(), lastExportAt: at.toISOString() };
+function write(next: Meta) {
+  cache = next;
   try {
     browserStorage().setItem(META_KEY, JSON.stringify(cache));
   } catch {
-    /* the reminder may show again; nothing is lost */
+    /* device-only and non-essential: the reminder may show again, the timer length resets */
   }
   listeners.forEach((l) => l());
+}
+
+export function recordExport(at: Date = new Date()) {
+  write({ ...read(), lastExportAt: at.toISOString() });
+}
+
+export function setRestSeconds(seconds: number) {
+  write({ ...read(), restSeconds: seconds });
 }
 
 export function useMeta(): Meta {

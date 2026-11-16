@@ -18,6 +18,7 @@ export function LogFrame({
   onDelete,
   children,
   words = LOG_WORDS,
+  bar,
 }: {
   title: string;
   date: string;
@@ -29,6 +30,8 @@ export function LogFrame({
   children: ReactNode;
   /** Button and dialog wording; the test result form uses its own. */
   words?: FrameWords;
+  /** Pinned above the Save button (the rest timer). */
+  bar?: ReactNode;
 }) {
   const [dialog, setDialog] = useState<'discard' | 'delete' | null>(null);
   const cancelRef = useRef<() => void>(() => {});
@@ -83,7 +86,9 @@ export function LogFrame({
         )}
       </div>
 
+      {bar && <div className="bar-spacer" aria-hidden="true" />}
       <div className="save-bar">
+        {bar}
         <button className="btn btn-primary btn-block" onClick={onSave}>
           {words.save}
         </button>

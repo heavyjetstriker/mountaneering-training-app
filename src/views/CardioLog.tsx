@@ -9,6 +9,8 @@ import { useLogActions, type LogTarget } from '../logContext';
 import { testsForSession } from '../tests';
 import { Segmented } from '../components/Segmented';
 import { LogFrame, numberText, parseNumber } from './LogFrame';
+import { RestTimer } from '../components/RestTimer';
+import { restFromPlan } from '../rest';
 
 interface Form {
   minutes: string;
@@ -101,6 +103,7 @@ export function CardioLog({ plan, target, onClose }: { plan: Plan; target: LogTa
       dirty={dirty}
       canDelete={!!existing}
       onSave={() => save()}
+      bar={type === 'me' ? <RestTimer planRest={restFromPlan(session.target ?? '')} /> : undefined}
       onDiscard={() => onClose()}
       onDelete={remove}
     >
