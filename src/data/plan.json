@@ -1,0 +1,185 @@
+{
+  "startDate": "2026-11-16",
+  "weekly": {
+    "mon": ["strengthA", "zone2Incline"],
+    "tue": ["zone2Long"],
+    "wed": ["strengthB", "zone2Stairs"],
+    "thu": ["me"],
+    "fri": ["rest"],
+    "sat": ["longHike"],
+    "sun": ["recovery"]
+  },
+  "templates": {
+    "strengthA": {
+      "type": "strengthA",
+      "title": "Strength A",
+      "exercises": [
+        { "id": "back-squat", "name": "Back squat", "sets": 4, "reps": "5", "mainLift": true },
+        { "id": "sl-rdl", "name": "Single-leg Romanian deadlift (dumbbell)", "sets": 3, "reps": "8 per leg" },
+        {
+          "id": "weighted-pull-ups", "name": "Weighted pull-ups", "sets": 4, "reps": "5", "mainLift": true,
+          "swaps": ["lat-pulldown", "chin-ups", "single-arm-cable-pulldown", "inverted-rows"]
+        },
+        { "id": "lateral-step-downs", "name": "Slow lateral step-downs", "sets": 3, "reps": "10 per leg", "note": "3 s down" },
+        { "id": "pallof-press", "name": "Pallof press (cable)", "sets": 3, "reps": "10 per side" },
+        { "id": "calf-raise", "name": "Standing calf raise", "sets": 3, "reps": "15" },
+        { "id": "tibialis-raise", "name": "Tibialis raise", "sets": 2, "reps": "20" }
+      ]
+    },
+    "strengthB": {
+      "type": "strengthB",
+      "title": "Strength B",
+      "exercises": [
+        { "id": "deadlift", "name": "Deadlift (trap bar or conventional)", "sets": 4, "reps": "4", "mainLift": true },
+        { "id": "bulgarian-split-squat", "name": "Bulgarian split squat", "sets": 3, "reps": "8 per leg" },
+        { "id": "overhead-press", "name": "Overhead press", "sets": 3, "reps": "6" },
+        { "id": "single-arm-cable-row", "name": "Single-arm cable row", "sets": 3, "reps": "10 per side" },
+        { "id": "farmer-carry", "name": "Farmer carry (heavy)", "sets": 3, "reps": "40 m" },
+        { "id": "hanging-leg-raise", "name": "Hanging leg raise", "sets": 3, "reps": "10" },
+        { "id": "side-plank", "name": "Side plank", "sets": 3, "reps": "30 s per side" }
+      ]
+    },
+    "zone2Incline": {
+      "type": "zone2Incline",
+      "title": "Zone 2 on the incline treadmill",
+      "cardio": { "minutes": [30, 45], "zone": "Zone 2", "where": "Incline treadmill" }
+    },
+    "zone2Long": {
+      "type": "zone2Long",
+      "title": "Zone 2",
+      "cardio": { "minutes": [60, 90], "zone": "Zone 2", "where": "Incline treadmill, stairmaster or a hilly trail" }
+    },
+    "zone2Stairs": {
+      "type": "zone2Stairs",
+      "title": "Zone 2 on the stairmaster",
+      "cardio": { "minutes": [30, 45], "zone": "Zone 2", "where": "Stairmaster" }
+    },
+    "me": { "type": "me", "title": "Muscular endurance" },
+    "longHike": { "type": "longHike", "title": "Long hike" },
+    "recovery": { "type": "recovery", "title": "Recovery" },
+    "rest": { "type": "rest", "title": "Rest day", "instructions": "No training. Mobility only." },
+    "testDriftVertical": {
+      "type": "testDriftVertical",
+      "title": "Drift test and vertical test",
+      "instructions": "Run the drift test and the vertical test as described in your training plan, then enter the results in the Tests tab."
+    },
+    "testThreshold": {
+      "type": "testThreshold",
+      "title": "Threshold test",
+      "instructions": "After the warm-up, 30 min hard, steady effort on the incline treadmill or uphill. Log the average heart rate as your threshold HR. Then easy Zone 2 until the session reaches about 60 min."
+    },
+    "testDriftRetest": {
+      "type": "testDriftRetest",
+      "title": "Drift retest",
+      "instructions": "Your intervals are still off, so repeat the drift test as described in your training plan. The threshold gap is recalculated with your latest threshold result."
+    },
+    "longDayTest": {
+      "type": "longDayTest",
+      "title": "Long-day test",
+      "instructions": "5 h hike with a 12–14 kg pack."
+    }
+  },
+  "exerciseLibrary": [
+    { "id": "lat-pulldown", "name": "Lat pulldown", "sets": 4, "reps": "5–6", "mainLift": true },
+    { "id": "chin-ups", "name": "Chin-ups", "sets": 4, "reps": "5", "mainLift": true },
+    { "id": "single-arm-cable-pulldown", "name": "Single-arm cable pulldown", "sets": 3, "reps": "8 per side" },
+    { "id": "inverted-rows", "name": "Inverted rows", "sets": 4, "reps": "8" }
+  ],
+  "weeks": [
+    {
+      "week": 1, "block": 1, "kind": "build",
+      "longHike": { "hours": "2 h", "packKg": "6 kg" },
+      "sunday": "1 h easy walk",
+      "meVolume": "Box step-ups (40–45 cm box, alternate legs): 4 × 60 steps with a ~6.5 kg pack, 2 min rest, Zone 2",
+      "dayChanges": { "tue": ["testDriftVertical"] },
+      "notes": "Drift and vertical tests on Tuesday."
+    },
+    {
+      "week": 2, "block": 1, "kind": "build",
+      "longHike": { "hours": "2.5 h", "packKg": "6 kg" },
+      "sunday": "1 h easy walk",
+      "meVolume": "Box step-ups (40–45 cm box, alternate legs): 4 × 70 steps with a ~6.5 kg pack, 2 min rest, Zone 2",
+      "dayChanges": { "tue": ["testThreshold"] },
+      "notes": "Threshold test on Tuesday. Hike time goes up, pack stays the same."
+    },
+    {
+      "week": 3, "block": 1, "kind": "build",
+      "longHike": { "hours": "2.5 h", "packKg": "8 kg" },
+      "sunday": "1 h easy walk",
+      "meVolume": "Box step-ups (40–45 cm box, alternate legs): 4 × 80 steps with a ~6.5 kg pack, 2 min rest, Zone 2",
+      "notes": "Pack goes up, hike time stays the same."
+    },
+    {
+      "week": 4, "block": 1, "kind": "lighter",
+      "longHike": { "hours": "2 h", "packKg": "6 kg" },
+      "sunday": "45 min easy walk",
+      "meVolume": "Box step-ups (40–45 cm box, alternate legs): 3 × 80 steps with a ~6.5 kg pack, 2 min rest, Zone 2",
+      "notes": ""
+    },
+    {
+      "week": 5, "block": 2, "kind": "build",
+      "longHike": { "hours": "3 h", "packKg": "8 kg" },
+      "sunday": "1–1.5 h easy",
+      "intervals": 4,
+      "meVolume": "Box step-ups (40–45 cm box, alternate legs): 5 × 80 steps with a 10–13 kg pack, 2 min rest, Zone 2–3",
+      "notes": "Include a steep descent on Saturday. Intervals 4 × 4 min on Tuesday if allowed."
+    },
+    {
+      "week": 6, "block": 2, "kind": "build",
+      "longHike": { "hours": "3 h", "packKg": "10 kg" },
+      "sunday": "1–1.5 h easy",
+      "intervals": 5,
+      "meVolume": "Box step-ups (40–45 cm box, alternate legs): 5 × 80 steps with a 10–13 kg pack, 2 min rest, Zone 2–3",
+      "notes": "Intervals 5 × 4 min on Tuesday if allowed."
+    },
+    {
+      "week": 7, "block": 2, "kind": "build",
+      "longHike": { "hours": "3.5 h", "packKg": "10 kg" },
+      "sunday": "1.5 h easy",
+      "intervals": 6,
+      "meVolume": "Box step-ups (40–45 cm box, alternate legs): 5 × 80 steps with a 10–13 kg pack, 2 min rest, Zone 2–3",
+      "notes": "Include a steep descent on Saturday. Intervals 6 × 4 min on Tuesday if allowed."
+    },
+    {
+      "week": 8, "block": 2, "kind": "lighter",
+      "longHike": { "hours": "2.5 h", "packKg": "8 kg" },
+      "sunday": "45 min easy walk",
+      "meVolume": "Box step-ups (40–45 cm box, alternate legs): 3 × 80 steps with a 10–13 kg pack, 2 min rest, Zone 2–3",
+      "dayChanges": { "tue": ["testDriftRetest"] },
+      "notes": "No intervals this week. Drift retest on Tuesday if intervals were off."
+    },
+    {
+      "week": 9, "block": 3, "kind": "build",
+      "longHike": { "hours": "4 h", "packKg": "12 kg" },
+      "sunday": "2 h hike, no pack or up to 5 kg",
+      "meVolume": "Water carry up the steepest hill or stairs, pour the water out at the top: 45–75 min of climbing with 13–16 kg, Zone 3",
+      "notes": "First back-to-back weekend."
+    },
+    {
+      "week": 10, "block": 3, "kind": "build",
+      "longHike": { "hours": "4.5 h", "packKg": "12 kg" },
+      "sunday": "2.5 h hike, up to 5 kg",
+      "meVolume": "Water carry up the steepest hill or stairs: 45–75 min of climbing with 13–16 kg, Zone 3. Keep the water in for the descent.",
+      "notes": "Keep the water in for the descent on Thursday."
+    },
+    {
+      "week": 11, "block": 3, "kind": "build",
+      "longHike": { "hours": "4.5 h", "packKg": "14 kg" },
+      "sunday": "3 h hike, up to 5 kg",
+      "meVolume": "Water carry up the steepest hill or stairs, pour the water out at the top: 45–75 min of climbing with 13–16 kg, Zone 3",
+      "notes": "Peak week."
+    },
+    {
+      "week": 12, "block": 3, "kind": "test",
+      "longHike": { "hours": "5 h", "packKg": "12–14 kg" },
+      "sunday": "45 min easy walk",
+      "meVolume": "Water carry up the steepest hill or stairs: 25–35 min of climbing with 13–16 kg, Zone 3. Keep the water in.",
+      "dayChanges": { "tue": ["testDriftVertical"], "sat": ["longDayTest"] },
+      "notes": "Drift and vertical tests on Tuesday, long-day test on Saturday."
+    }
+  ],
+  "reminders": {
+    "everySession": "10 min warm-up before every session.",
+    "everyDay": "10 min mobility every day: hip flexors, calves, hamstrings, upper back."
+  }
+}
