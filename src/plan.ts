@@ -165,6 +165,25 @@ export function resolveSession(
   return out;
 }
 
+/**
+ * A one-off swap (e.g. weighted pull-ups → lat pulldown) as it should be done that day:
+ * the swap's own sets and reps, with the block rules (its mainLift flag) and the
+ * lighter / test-week cuts of the session it replaces.
+ */
+export function resolveSwap(
+  plan: Plan,
+  week: number,
+  day: Day,
+  type: SessionType,
+  swapId: string,
+): (Exercise & { originalSets: number }) | null {
+  const ex = plan.exerciseLibrary.find((e) => e.id === swapId);
+  if (!ex) return null;
+  const w = getWeek(plan, week);
+  const blocked = applyBlock(ex, w.block);
+  return { ...blocked, originalSets: blocked.sets, sets: adjustSets(blocked.sets, adjustmentFor(w, type, day)) };
+}
+
 export function sessionsFor(plan: Plan, week: number, day: Day, ctx: Context = DEFAULT_CONTEXT): ResolvedSession[] {
   return sessionTypesFor(plan, week, day, ctx).map((t) => resolveSession(plan, week, day, t, ctx));
 }

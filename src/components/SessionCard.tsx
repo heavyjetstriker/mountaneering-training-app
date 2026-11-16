@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import type { PlanWeek } from '../schema';
 import type { ResolvedSession } from '../plan';
 
@@ -12,7 +13,7 @@ function minutes([lo, hi]: [number, number]): string {
 }
 
 /** One session as a GitHub-style box: header row, then list rows. */
-export function SessionCard({ session, week }: { session: ResolvedSession; week: PlanWeek }) {
+export function SessionCard({ session, week, footer }: { session: ResolvedSession; week: PlanWeek; footer?: ReactNode }) {
   const s = session;
   return (
     <article className="box">
@@ -72,6 +73,7 @@ export function SessionCard({ session, week }: { session: ResolvedSession; week:
 
       {s.target && <p className="box-row target">{s.target}</p>}
       {s.instructions && <p className="box-row text-muted">{s.instructions}</p>}
+      {footer}
     </article>
   );
 }

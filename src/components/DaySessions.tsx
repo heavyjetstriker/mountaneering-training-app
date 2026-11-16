@@ -1,9 +1,22 @@
 import type { Day, Plan } from '../schema';
 import { getWeek, sessionsFor, DEFAULT_CONTEXT } from '../plan';
 import { SessionCard } from './SessionCard';
+import { SessionFooter } from './SessionFooter';
 
-/** Everything planned for one day: notice, sessions and reminders. */
-export function DaySessions({ plan, week, day }: { plan: Plan; week: number; day: Day }) {
+/** Everything planned for one day: notice, sessions with their log footers, and reminders. */
+export function DaySessions({
+  plan,
+  week,
+  day,
+  date,
+  today,
+}: {
+  plan: Plan;
+  week: number;
+  day: Day;
+  date: string;
+  today: string;
+}) {
   const w = getWeek(plan, week);
   const sessions = sessionsFor(plan, week, day, DEFAULT_CONTEXT);
   const isRest = sessions.length === 1 && sessions[0].type === 'rest';
@@ -24,7 +37,14 @@ export function DaySessions({ plan, week, day }: { plan: Plan; week: number; day
           <p className="box-row text-muted">No training today.</p>
         </article>
       ) : (
-        sessions.map((s, i) => <SessionCard key={`${s.type}-${i}`} session={s} week={w} />)
+        sessions.map((s, i) => (
+          <SessionCard
+            key={`${s.type}-${i}`}
+            session={s}
+            week={w}
+            footer={<SessionFooter session={s} date={date} today={today} week={week} day={day} />}
+          />
+        ))
       )}
 
       <ul className="reminders text-muted text-small">

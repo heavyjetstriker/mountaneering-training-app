@@ -21,6 +21,10 @@ starting a milestone; this file only holds the rules that must never be broken.
   overrides). Every new rule gets a Vitest test in src/plan.test.ts.
 - **User changes are overrides layered on plan.json**, never edits to it. Logs store names and
   numbers as they were on the day, so plan edits never rewrite history.
+- **My records live in one versioned object** in localStorage (`mta.data`, src/store.ts), validated by
+  src/logSchema.ts and written whole through `save()`. Unreadable data is never overwritten: it is
+  copied to `mta.data.corrupt-<timestamp>`. Log logic is pure and tested in src/logs.ts.
+  Half-filled strength logs are kept separately in `mta.drafts` (never exported).
 - Keep it simple: React + plain CSS, no state library, no router, no new dependencies without a reason.
 - App text is English, sentence case, plain words.
 

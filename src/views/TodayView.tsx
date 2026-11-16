@@ -41,7 +41,7 @@ export function TodayView({ plan, today }: { plan: Plan; today: string }) {
   return (
     <section>
       <DayHeader title={`${DAY_NAMES[pos.day]}, ${shortDate(today)}`} week={getWeek(plan, pos.week)} />
-      <DaySessions plan={plan} week={pos.week} day={pos.day} />
+      <DaySessions plan={plan} week={pos.week} day={pos.day} date={today} today={today} />
     </section>
   );
 }

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import rawPlan from './data/plan.json';
 import { parsePlan } from './schema';
 import { addDays, localISO, weekdayOf, dayNumber, fromDayNumber } from './dates';
-import { positionOn, sessionTypesFor, resolveSession, sessionsFor, dateOf } from './plan';
+import { positionOn, sessionTypesFor, resolveSession, sessionsFor, dateOf, resolveSwap } from './plan';
 
 const plan = parsePlan(rawPlan);
 const exercise = (week: number, day: 'mon' | 'wed', type: 'strengthA' | 'strengthB', id: string) =>
@@ -134,5 +134,17 @@ describe('block rules (rule 3)', () => {
     expect(resolveSession(plan, 5, 'tue', 'zone2Long', { intervalsAllowed: true })).toMatchObject({ intervals: 4 });
     expect(resolveSession(plan, 7, 'tue', 'zone2Long', { intervalsAllowed: true }).intervals).toBe(6);
     expect(resolveSession(plan, 9, 'tue', 'zone2Long', { intervalsAllowed: true }).intervals).toBeUndefined();
+  });
+});
+
+describe('one-off swaps', () => {
+  it('uses the swap\'s own dose with the block rules and week cuts', () => {
+    const swap = (week: number, id: string) => resolveSwap(plan, week, 'mon', 'strengthA', id)!;
+    expect(swap(1, 'lat-pulldown')).toMatchObject({ name: 'Lat pulldown', sets: 4, reps: '5–6' });
+    expect(swap(5, 'lat-pulldown')).toMatchObject({ sets: 4, reps: '4' }); // main lift, block 2
+    expect(swap(5, 'inverted-rows')).toMatchObject({ sets: 4, reps: '8' }); // accessory
+    expect(swap(4, 'lat-pulldown')).toMatchObject({ sets: 3, originalSets: 4 }); // lighter week
+    expect(swap(12, 'lat-pulldown')).toMatchObject({ sets: 2, reps: '4' }); // block 3, halved
+    expect(resolveSwap(plan, 1, 'mon', 'strengthA', 'nope')).toBeNull();
   });
 });

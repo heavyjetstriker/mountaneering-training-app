@@ -1,11 +1,20 @@
 import { useState } from 'react';
-import { ChevronLeftIcon, ChevronRightIcon } from '@primer/octicons-react';
+import { CheckCircleFillIcon, CheckCircleIcon, ChevronLeftIcon, ChevronRightIcon, SkipIcon } from '@primer/octicons-react';
 import type { Day, Plan } from '../schema';
 import { DAY_NAMES, DAY_ORDER, shortDate } from '../dates';
 import { dateOf, getWeek, positionOn, sessionTypesFor, TOTAL_WEEKS } from '../plan';
 import { DayHeader } from '../components/DayHeader';
 import { DaySessions } from '../components/DaySessions';
 import { WeekProgress } from '../components/WeekProgress';
+import { useAppData } from '../store';
+import { dayStatus, type DayStatus } from '../logs';
+
+function StatusIcon({ status }: { status: DayStatus | null }) {
+  if (status === 'done') return <CheckCircleFillIcon className="status-icon status-icon--done" aria-label="Done" />;
+  if (status === 'partial') return <CheckCircleIcon className="status-icon status-icon--partial" aria-label="Partly done" />;
+  if (status === 'skipped') return <SkipIcon className="status-icon status-icon--skipped" aria-label="Skipped" />;
+  return null;
+}
 
 function initialWeek(plan: Plan, today: string): number {
   const pos = positionOn(plan, today);
@@ -18,6 +27,7 @@ function initialWeek(plan: Plan, today: string): number {
 export function WeekView({ plan, today }: { plan: Plan; today: string }) {
   const [week, setWeek] = useState(() => initialWeek(plan, today));
   const [openDay, setOpenDay] = useState<Day | null>(null);
+  const { logs } = useAppData();
   const w = getWeek(plan, week);
 
   if (openDay) {
@@ -27,7 +37,7 @@ export function WeekView({ plan, today }: { plan: Plan; today: string }) {
           <ChevronLeftIcon /> Week {week}
         </button>
         <DayHeader title={`${DAY_NAMES[openDay]}, ${shortDate(dateOf(plan, week, openDay))}`} week={w} />
-        <DaySessions plan={plan} week={week} day={openDay} />
+        <DaySessions plan={plan} week={week} day={openDay} date={dateOf(plan, week, openDay)} today={today} />
       </section>
     );
   }
@@ -61,8 +71,10 @@ export function WeekView({ plan, today }: { plan: Plan; today: string }) {
       <ul className="box">
         {DAY_ORDER.map((d) => {
           const date = dateOf(plan, week, d);
-          const titles = sessionTypesFor(plan, week, d).map((t) => plan.templates[t].title);
+          const types = sessionTypesFor(plan, week, d);
+          const titles = types.map((t) => plan.templates[t].title);
           const isToday = date === today;
+          const status = date <= today ? dayStatus(logs, date, types) : null;
           return (
             <li key={d}>
               <button
@@ -78,6 +90,7 @@ export function WeekView({ plan, today }: { plan: Plan; today: string }) {
                 </span>
                 <span className="day-row-what">{titles.join(', then ')}</span>
                 {isToday && <span className="label label--accent">Today</span>}
+                <StatusIcon status={status} />
                 <ChevronRightIcon className="text-muted" />
               </button>
             </li>
