@@ -225,6 +225,7 @@ export function StrengthLog({ plan, target, onClose }: { plan: Plan; target: Log
             <p className="box-row box-row--note">
               {swapped && <>Instead of {info.planned!.name}. </>}
               {lastTimeText(lastSetsFor(logs, b.exerciseId, date))}
+              {info.current?.targetKg !== undefined && <> Target {numberText(info.current.targetKg)} kg.</>}
             </p>
             <div className="box-row set-row set-head text-muted text-small" aria-hidden="true">
               <span>Set</span>

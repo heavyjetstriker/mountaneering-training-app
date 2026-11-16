@@ -60,6 +60,8 @@ FIXTURE = {
     ],
 }
 SEED = "localStorage.setItem('mta.data', %s); localStorage.removeItem('mta.drafts');" % json.dumps(json.dumps(FIXTURE))
+# Seed once per tab, so changes made in a flow survive the next page.goto.
+SEED_ONCE = "if (!sessionStorage.getItem('seeded')) { %s sessionStorage.setItem('seeded', '1'); }" % SEED
 CORRUPT = "localStorage.setItem('mta.data', '{broken'); localStorage.removeItem('mta.drafts');"
 
 os.makedirs(OUT, exist_ok=True)
@@ -128,6 +130,49 @@ with sync_playwright() as p:
     kb.get_by_role("button", name="Log session").first.click()
     kb.get_by_label("Back squat, set 2, kg").focus()
     shot(kb, "log-keyboard", full=False)
+
+    # ---- milestone 3: plan changes ----
+    m3 = new_page(SEED_ONCE)
+    m3.goto(BASE + "?date=2026-11-23")
+    m3.get_by_role("button", name="Back squat").first.click()
+    shot(m3, "m3-edit-exercise", full=False)
+    m3.get_by_role("dialog").get_by_label("Sets").fill("3")
+    m3.get_by_role("dialog").get_by_label("Target").fill("85")
+    m3.get_by_role("dialog").get_by_role("button", name="Save", exact=True).click()
+    shot(m3, "m3-after-edit")
+    m3.get_by_role("button", name="Weighted pull-ups").first.click()
+    m3.get_by_role("button", name="Replace with another exercise").click()
+    shot(m3, "m3-replace", full=False)
+    m3.get_by_role("dialog").get_by_role("button", name="Lat pulldown").click()
+
+    m3.goto(BASE + "?date=2026-11-28")  # week 2 Saturday
+    m3.get_by_role("button", name="Move Saturday to another day").click()
+    shot(m3, "m3-move-day", full=False)
+    m3.get_by_role("dialog").get_by_role("button", name="Friday").click()
+    shot(m3, "m3-move-friday-confirm", full=False)
+    m3.get_by_role("button", name="Pick another day").click()
+    m3.get_by_role("dialog").get_by_role("button", name="Sunday").click()
+    shot(m3, "m3-after-move")
+
+    m3.goto(BASE + "?date=2026-11-23")
+    m3.get_by_role("button", name="Week", exact=True).click()
+    m3.get_by_role("button", name="Edit week").click()
+    shot(m3, "m3-edit-week", full=False)
+    m3.get_by_role("dialog").get_by_label("Hike length").fill("3 h")
+    m3.get_by_role("dialog").get_by_role("button", name="Save", exact=True).click()
+    shot(m3, "m3-week-after")
+
+    m3.get_by_role("button", name="More", exact=True).click()
+    shot(m3, "m3-more")
+    m3.get_by_role("button", name="Pause 1 week").click()
+    shot(m3, "m3-more-paused")
+    m3.get_by_role("button", name="Today", exact=True).click()
+    shot(m3, "m3-today-paused")
+    m3.get_by_role("button", name="More", exact=True).click()
+    m3.get_by_role("button", name="Reset all").click()
+    shot(m3, "m3-reset-all-dialog", full=False)
+    m3.get_by_role("dialog").get_by_role("button", name="Reset", exact=True).click()
+    shot(m3, "m3-after-reset")
 
     bad = new_page(CORRUPT)
     bad.goto(BASE + "?date=2026-11-16")

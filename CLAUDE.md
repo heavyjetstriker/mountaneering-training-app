@@ -19,7 +19,9 @@ starting a milestone; this file only holds the rules that must never be broken.
 - **Friday is always rest.** Plan pauses are whole weeks only.
 - **Plan logic stays pure and tested.** Rules live in src/plan.ts (later also buildEffectivePlan for
   overrides). Every new rule gets a Vitest test in src/plan.test.ts.
-- **User changes are overrides layered on plan.json**, never edits to it. Logs store names and
+- **User changes are overrides layered on plan.json**, never edits to it. `buildEffectivePlan` (src/plan.ts)
+  applies them in createdAt order; App passes the effective plan to every screen. A this-week-only
+  change beats a permanent one; resetting a change deletes its override record. Logs store names and
   numbers as they were on the day, so plan edits never rewrite history.
 - **My records live in one versioned object** in localStorage (`mta.data`, src/store.ts), validated by
   src/logSchema.ts and written whole through `save()`. Unreadable data is never overwritten: it is

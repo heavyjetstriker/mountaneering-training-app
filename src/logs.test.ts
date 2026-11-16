@@ -189,7 +189,7 @@ describe('cardio prefill', () => {
   });
 
   const prefill = (week: number, day: 'mon' | 'tue' | 'thu' | 'sat' | 'sun', type: Parameters<typeof resolveSession>[3]) =>
-    cardioPrefill(resolveSession(plan, week, day, type), getWeek(plan, week), day);
+    cardioPrefill(resolveSession(plan, week, day, type), getWeek(plan, week));
 
   it('Zone 2: upper end after the lighter-week cut', () => {
     expect(prefill(1, 'mon', 'zone2Incline')).toMatchObject({ minutes: 45, effortZone: 2, packKg: null });

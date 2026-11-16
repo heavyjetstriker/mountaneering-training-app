@@ -11,9 +11,11 @@ export interface LogTarget {
 
 export interface LogActions {
   openLog(target: LogTarget): void;
+  /** Short success Flash at the top of the screen. */
+  notify(text: string): void;
 }
 
-export const LogActionsContext = createContext<LogActions>({ openLog: () => {} });
+export const LogActionsContext = createContext<LogActions>({ openLog: () => {}, notify: () => {} });
 
 export function useLogActions(): LogActions {
   return useContext(LogActionsContext);

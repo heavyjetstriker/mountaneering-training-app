@@ -2,7 +2,18 @@ import { describe, expect, it } from 'vitest';
 import rawPlan from './data/plan.json';
 import { parsePlan } from './schema';
 import { addDays, localISO, weekdayOf, dayNumber, fromDayNumber } from './dates';
-import { positionOn, sessionTypesFor, resolveSession, sessionsFor, dateOf, resolveSwap } from './plan';
+import {
+  positionOn,
+  sessionTypesFor,
+  resolveSession,
+  sessionsFor,
+  dateOf,
+  resolveSwap,
+  buildEffectivePlan,
+  slotsFor,
+  weekStartDate,
+} from './plan';
+import type { OverrideRecord, PlanOverride } from './logSchema';
 
 const plan = parsePlan(rawPlan);
 const exercise = (week: number, day: 'mon' | 'wed', type: 'strengthA' | 'strengthB', id: string) =>
@@ -146,5 +157,147 @@ describe('one-off swaps', () => {
     expect(swap(4, 'lat-pulldown')).toMatchObject({ sets: 3, originalSets: 4 }); // lighter week
     expect(swap(12, 'lat-pulldown')).toMatchObject({ sets: 2, reps: '4' }); // block 3, halved
     expect(resolveSwap(plan, 1, 'mon', 'strengthA', 'nope')).toBeNull();
+  });
+});
+
+// ---------- Rule 7: my changes ----------
+
+let seq = 0;
+const rec = (override: PlanOverride, createdAt = `2026-11-16T10:00:${String(++seq).padStart(2, '0')}Z`): OverrideRecord => ({
+  id: `o${seq}`,
+  createdAt,
+  override,
+});
+const eff = (...records: OverrideRecord[]) => buildEffectivePlan(plan, records);
+const ex = (p: typeof plan, week: number, day: 'mon' | 'wed', type: 'strengthA' | 'strengthB', slot: string) =>
+  resolveSession(p, week, day, type).exercises!.find((e) => e.slotId === slot)!;
+
+describe('effective plan (rule 7)', () => {
+  it('with no changes it behaves exactly like plan.json', () => {
+    const p = eff();
+    for (const week of [1, 4, 5, 8, 12]) {
+      for (const day of ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const) {
+        expect(sessionsFor(p, week, day)).toEqual(sessionsFor(plan, week, day));
+      }
+    }
+    expect(dateOf(p, 6, 'mon')).toBe(dateOf(plan, 6, 'mon'));
+  });
+
+  it('edits an exercise from a week on, after the block rules, and still cuts lighter weeks', () => {
+    const p = eff(rec({ kind: 'editExercise', scope: { fromWeek: 3 }, sessionType: 'strengthA', exerciseId: 'back-squat', changes: { sets: 3 } }));
+    expect(ex(p, 2, 'mon', 'strengthA', 'back-squat')).toMatchObject({ sets: 4, reps: '5' });
+    expect(ex(p, 3, 'mon', 'strengthA', 'back-squat')).toMatchObject({ sets: 3, reps: '5' });
+    expect(ex(p, 4, 'mon', 'strengthA', 'back-squat')).toMatchObject({ sets: 2, originalSets: 3 }); // lighter week
+    expect(ex(p, 5, 'mon', 'strengthA', 'back-squat')).toMatchObject({ sets: 3, reps: '4' }); // block 2 reps, my sets
+  });
+
+  it('lets a this-week-only change beat a permanent one, whatever order they were made in', () => {
+    const p = eff(
+      rec({ kind: 'editExercise', scope: { week: 3 }, sessionType: 'strengthA', exerciseId: 'back-squat', changes: { sets: 2 } }),
+      rec({ kind: 'editExercise', scope: { fromWeek: 1 }, sessionType: 'strengthA', exerciseId: 'back-squat', changes: { sets: 5, targetKg: 90 } }),
+    );
+    expect(ex(p, 3, 'mon', 'strengthA', 'back-squat')).toMatchObject({ sets: 2, targetKg: 90 });
+    expect(ex(p, 2, 'mon', 'strengthA', 'back-squat')).toMatchObject({ sets: 5, targetKg: 90 });
+  });
+
+  it('does not cut a set count I chose for that week only', () => {
+    const p = eff(rec({ kind: 'editExercise', scope: { week: 4 }, sessionType: 'strengthA', exerciseId: 'back-squat', changes: { sets: 4 } }));
+    expect(ex(p, 4, 'mon', 'strengthA', 'back-squat')).toMatchObject({ sets: 4, originalSets: 4 });
+  });
+
+  it('clears a target kg and a note', () => {
+    const p = eff(
+      rec({ kind: 'editExercise', scope: { fromWeek: 1 }, sessionType: 'strengthA', exerciseId: 'lateral-step-downs', changes: { targetKg: 10, note: '' } }),
+      rec({ kind: 'editExercise', scope: { fromWeek: 2 }, sessionType: 'strengthA', exerciseId: 'lateral-step-downs', changes: { targetKg: null } }),
+    );
+    expect(ex(p, 1, 'mon', 'strengthA', 'lateral-step-downs')).toMatchObject({ targetKg: 10 });
+    expect(ex(p, 1, 'mon', 'strengthA', 'lateral-step-downs').note).toBeUndefined();
+    expect(ex(p, 2, 'mon', 'strengthA', 'lateral-step-downs').targetKg).toBeUndefined();
+  });
+
+  it('replaces an exercise in its slot, with its own block rules, and edits follow the new id', () => {
+    const lat = plan.exerciseLibrary.find((e) => e.id === 'lat-pulldown')!;
+    const p = eff(
+      rec({ kind: 'replaceExercise', scope: { fromWeek: 2 }, sessionType: 'strengthA', exerciseId: 'weighted-pull-ups', with: lat }),
+      rec({ kind: 'editExercise', scope: { fromWeek: 1 }, sessionType: 'strengthA', exerciseId: 'lat-pulldown', changes: { targetKg: 60 } }),
+    );
+    expect(ex(p, 1, 'mon', 'strengthA', 'weighted-pull-ups')).toMatchObject({ id: 'weighted-pull-ups' });
+    expect(ex(p, 2, 'mon', 'strengthA', 'weighted-pull-ups')).toMatchObject({ id: 'lat-pulldown', sets: 4, reps: '5–6', targetKg: 60 });
+    expect(ex(p, 5, 'mon', 'strengthA', 'weighted-pull-ups')).toMatchObject({ id: 'lat-pulldown', reps: '4' }); // main lift
+    const custom = { id: 'custom-ring-rows', name: 'Ring rows', sets: 3, reps: '10' };
+    const q = eff(
+      rec({ kind: 'replaceExercise', scope: { fromWeek: 1 }, sessionType: 'strengthA', exerciseId: 'weighted-pull-ups', with: lat }),
+      rec({ kind: 'replaceExercise', scope: { week: 6 }, sessionType: 'strengthA', exerciseId: 'weighted-pull-ups', with: custom }),
+    );
+    expect(ex(q, 6, 'mon', 'strengthA', 'weighted-pull-ups')).toMatchObject({ name: 'Ring rows', sets: 3, reps: '10' });
+    expect(ex(q, 7, 'mon', 'strengthA', 'weighted-pull-ups')).toMatchObject({ name: 'Lat pulldown' });
+  });
+
+  it('moves all of a day\'s sessions, stacking after the target day\'s own', () => {
+    const p = eff(rec({ kind: 'moveDay', week: 6, from: 'sat', to: 'sun' }));
+    expect(sessionTypesFor(p, 6, 'sat')).toEqual(['rest']);
+    expect(sessionTypesFor(p, 6, 'sun')).toEqual(['recovery', 'longHike']);
+    expect(sessionTypesFor(p, 5, 'sat')).toEqual(['longHike']);
+    const mon = eff(rec({ kind: 'moveDay', week: 3, from: 'mon', to: 'tue' }));
+    expect(sessionTypesFor(mon, 3, 'tue')).toEqual(['zone2Long', 'strengthA', 'zone2Incline']);
+  });
+
+  it('replaces Friday\'s rest when a day is moved onto it, and keeps the original day\'s rules', () => {
+    const p = eff(rec({ kind: 'moveDay', week: 12, from: 'mon', to: 'fri' }));
+    expect(sessionTypesFor(p, 12, 'fri')).toEqual(['strengthA', 'zone2Incline']);
+    expect(slotsFor(p, 12).fri[0].from).toBe('mon');
+    // Week 12 Monday strength is halved; moving it to Friday doesn't change that.
+    expect(ex(p, 12, 'fri' as 'mon', 'strengthA', 'back-squat')).toMatchObject({ sets: 2 });
+    const sat = eff(rec({ kind: 'moveDay', week: 12, from: 'tue', to: 'sat' }));
+    expect(sessionTypesFor(sat, 12, 'sat')).toEqual(['longDayTest', 'testDriftVertical']);
+  });
+
+  it('applies moves in order, and ignores moving a rest day', () => {
+    const p = eff(
+      rec({ kind: 'moveDay', week: 2, from: 'fri', to: 'mon' }),
+      rec({ kind: 'moveDay', week: 2, from: 'thu', to: 'fri' }),
+      rec({ kind: 'moveDay', week: 2, from: 'fri', to: 'sat' }),
+    );
+    expect(sessionTypesFor(p, 2, 'mon')).toEqual(['strengthA', 'zone2Incline']);
+    expect(sessionTypesFor(p, 2, 'thu')).toEqual(['rest']);
+    expect(sessionTypesFor(p, 2, 'fri')).toEqual(['rest']);
+    expect(sessionTypesFor(p, 2, 'sat')).toEqual(['longHike', 'me']);
+  });
+
+  it('edits a week\'s targets', () => {
+    const p = eff(rec({ kind: 'weekTargets', week: 6, changes: { longHike: { hours: '3.5 h', packKg: '12 kg' }, sunday: '1 h easy walk' } }));
+    expect(resolveSession(p, 6, 'sat', 'longHike').target).toBe('3.5 h with a 12 kg pack');
+    expect(resolveSession(p, 6, 'sun', 'recovery').target).toBe('1 h easy walk');
+    expect(resolveSession(p, 7, 'sat', 'longHike').target).toBe('3.5 h with a 10 kg pack');
+    expect(p.weeks[5].notes).toBe(plan.weeks[5].notes);
+  });
+
+  it('pauses whole weeks from the override list', () => {
+    const p = eff(rec({ kind: 'pause', fromWeek: 6, weeks: 1 }));
+    expect(weekStartDate(p, 5)).toBe('2026-12-14');
+    expect(weekStartDate(p, 6)).toBe('2026-12-28');
+    expect(positionOn(p, '2026-12-23')).toMatchObject({ status: 'paused', nextWeek: 6, resumesOn: '2026-12-28' });
+    expect(positionOn(p, '2027-02-08')).toMatchObject({ status: 'active', week: 12, day: 'mon' });
+  });
+
+  it('done when: move Saturday\'s hike to Sunday, change squat sets and pause a week, then reset all three', () => {
+    const changed = eff(
+      rec({ kind: 'moveDay', week: 1, from: 'sat', to: 'sun' }),
+      rec({ kind: 'editExercise', scope: { fromWeek: 1 }, sessionType: 'strengthA', exerciseId: 'back-squat', changes: { sets: 3 } }),
+      rec({ kind: 'pause', fromWeek: 2, weeks: 1 }),
+    );
+    expect(sessionTypesFor(changed, 1, 'sun')).toEqual(['recovery', 'longHike']);
+    expect(ex(changed, 1, 'mon', 'strengthA', 'back-squat').sets).toBe(3);
+    expect(dateOf(changed, 2, 'mon')).toBe('2026-11-30');
+    const reset = eff();
+    expect(sessionTypesFor(reset, 1, 'sun')).toEqual(['recovery']);
+    expect(ex(reset, 1, 'mon', 'strengthA', 'back-squat').sets).toBe(4);
+    expect(dateOf(reset, 2, 'mon')).toBe('2026-11-23');
+  });
+
+  it('applies overrides in createdAt order, not storage order', () => {
+    const later = rec({ kind: 'editExercise', scope: { fromWeek: 1 }, sessionType: 'strengthA', exerciseId: 'back-squat', changes: { sets: 5 } }, '2026-11-20T00:00:00Z');
+    const earlier = rec({ kind: 'editExercise', scope: { fromWeek: 1 }, sessionType: 'strengthA', exerciseId: 'back-squat', changes: { sets: 2 } }, '2026-11-18T00:00:00Z');
+    expect(ex(eff(later, earlier), 1, 'mon', 'strengthA', 'back-squat').sets).toBe(5);
   });
 });

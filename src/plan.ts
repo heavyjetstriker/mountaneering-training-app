@@ -1,13 +1,91 @@
-// Plan logic rules 1–3 from the build handoff. Pure functions only, no React.
+// Plan logic rules 1–3 and 7 from the build handoff. Pure functions only, no React.
 import type { Day, Exercise, Plan, PlanWeek, SessionType } from './schema';
+import type { OverrideRecord, OverrideScope, PlanOverride } from './logSchema';
 import { addDays, daysBetween, weekdayOf, DAY_ORDER, type ISODate } from './dates';
 
 export const TOTAL_WEEKS = 12;
 
-/** A whole-week pause (milestone 3 stores these as overrides). */
+/** A whole-week pause (stored as a 'pause' override). */
 export interface Pause {
   fromWeek: number;
   weeks: number;
+}
+
+// ---------- Rule 7: my changes, layered on plan.json ----------
+
+type EditOverride = Extract<PlanOverride, { kind: 'editExercise' }>;
+type ReplaceOverride = Extract<PlanOverride, { kind: 'replaceExercise' }>;
+
+export interface PlanChanges {
+  pauses: Pause[];
+  /** Per plan week, in the order they were made. */
+  moves: Record<number, { from: Day; to: Day }[]>;
+  edits: EditOverride[];
+  replaces: ReplaceOverride[];
+}
+
+/** plan.json with all my override records applied. Every screen reads from this. */
+export interface EffectivePlan extends Plan {
+  changes: PlanChanges;
+}
+
+const NO_CHANGES: PlanChanges = { pauses: [], moves: {}, edits: [], replaces: [] };
+
+function changesOf(plan: Plan): PlanChanges {
+  return (plan as Partial<EffectivePlan>).changes ?? NO_CHANGES;
+}
+
+/** Overrides apply in createdAt order (ties keep their stored order). */
+export function sortOverrides(records: OverrideRecord[]): OverrideRecord[] {
+  return records
+    .map((r, i) => ({ r, i }))
+    .sort((a, b) => (a.r.createdAt < b.r.createdAt ? -1 : a.r.createdAt > b.r.createdAt ? 1 : a.i - b.i))
+    .map(({ r }) => r);
+}
+
+function withoutUndefined<T extends object>(o: T): Partial<T> {
+  return Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined)) as Partial<T>;
+}
+
+export function buildEffectivePlan(plan: Plan, overrides: OverrideRecord[]): EffectivePlan {
+  const changes: PlanChanges = { pauses: [], moves: {}, edits: [], replaces: [] };
+  const weeks = plan.weeks.map((w) => ({ ...w }));
+  for (const { override: o } of sortOverrides(overrides)) {
+    switch (o.kind) {
+      case 'editExercise':
+        changes.edits.push(o);
+        break;
+      case 'replaceExercise':
+        changes.replaces.push(o);
+        break;
+      case 'moveDay':
+        (changes.moves[o.week] ??= []).push({ from: o.from, to: o.to });
+        break;
+      case 'weekTargets': {
+        const i = weeks.findIndex((w) => w.week === o.week);
+        if (i >= 0) weeks[i] = { ...weeks[i], ...withoutUndefined(o.changes) };
+        break;
+      }
+      case 'pause':
+        changes.pauses.push({ fromWeek: o.fromWeek, weeks: o.weeks });
+        break;
+    }
+  }
+  return { ...plan, weeks, changes };
+}
+
+export function isWeekOnly(scope: OverrideScope): scope is { week: number } {
+  return 'week' in scope;
+}
+
+function appliesTo(scope: OverrideScope, week: number): boolean {
+  return isWeekOnly(scope) ? scope.week === week : week >= scope.fromWeek;
+}
+
+/** Permanent ones first, then this-week-only ones: a week-scoped change beats a permanent one. */
+function inScopeOrder<T extends { scope: OverrideScope }>(list: T[], week: number): T[] {
+  const live = list.filter((x) => appliesTo(x.scope, week));
+  return [...live.filter((x) => !isWeekOnly(x.scope)), ...live.filter((x) => isWeekOnly(x.scope))];
 }
 
 export type PlanPosition =
@@ -20,7 +98,7 @@ export type PlanPosition =
  * Rule 1: which plan week and day a date falls on.
  * Pauses are whole weeks, so the weekday pattern never changes and Friday stays rest.
  */
-export function positionOn(plan: Plan, date: ISODate, pauses: Pause[] = []): PlanPosition {
+export function positionOn(plan: Plan, date: ISODate, pauses: Pause[] = changesOf(plan).pauses): PlanPosition {
   const daysSince = daysBetween(plan.startDate, date);
   if (daysSince < 0) return { status: 'before', startDate: plan.startDate };
 
@@ -49,12 +127,12 @@ export function positionOn(plan: Plan, date: ISODate, pauses: Pause[] = []): Pla
 }
 
 /** Monday of a plan week, taking pauses into account. */
-export function weekStartDate(plan: Plan, week: number, pauses: Pause[] = []): ISODate {
+export function weekStartDate(plan: Plan, week: number, pauses: Pause[] = changesOf(plan).pauses): ISODate {
   const shift = pauses.filter((p) => p.fromWeek <= week).reduce((s, p) => s + p.weeks, 0);
   return addDays(plan.startDate, (week - 1 + shift) * 7);
 }
 
-export function dateOf(plan: Plan, week: number, day: Day, pauses: Pause[] = []): ISODate {
+export function dateOf(plan: Plan, week: number, day: Day, pauses: Pause[] = changesOf(plan).pauses): ISODate {
   return addDays(weekStartDate(plan, week, pauses), DAY_ORDER.indexOf(day));
 }
 
@@ -71,12 +149,45 @@ export interface Context {
 
 export const DEFAULT_CONTEXT: Context = { intervalsAllowed: false };
 
-/** Rule 2: the session types on a plan day, with that week's dayChanges applied. */
-export function sessionTypesFor(plan: Plan, week: number, day: Day, ctx: Context = DEFAULT_CONTEXT): SessionType[] {
+/** A session on a day, and the day the plan put it on (moves keep the original day's rules). */
+export interface Slot {
+  type: SessionType;
+  from: Day;
+}
+
+/**
+ * Rule 2: the sessions on each day of a plan week, with that week's dayChanges and my
+ * moved days applied. A moved day's sessions stack after the target day's own; a day
+ * left empty becomes a rest day.
+ */
+export function slotsFor(plan: Plan, week: number, ctx: Context = DEFAULT_CONTEXT): Record<Day, Slot[]> {
   const w = getWeek(plan, week);
-  const types = w.dayChanges?.[day] ?? plan.weekly[day];
-  // Week 8: the drift retest only happens if intervals are still off.
-  return types.map((t) => (t === 'testDriftRetest' && ctx.intervalsAllowed ? 'zone2Long' : t));
+  const days = {} as Record<Day, Slot[]>;
+  for (const d of DAY_ORDER) {
+    // Week 8: the drift retest only happens if intervals are still off.
+    days[d] = (w.dayChanges?.[d] ?? plan.weekly[d]).map((t) => ({
+      type: t === 'testDriftRetest' && ctx.intervalsAllowed ? 'zone2Long' : t,
+      from: d,
+    }));
+  }
+  for (const m of changesOf(plan).moves[week] ?? []) {
+    if (m.from === m.to) continue;
+    const moving = days[m.from].filter((s) => s.type !== 'rest');
+    if (moving.length === 0) continue;
+    days[m.from] = [];
+    days[m.to] = [...days[m.to].filter((s) => s.type !== 'rest'), ...moving];
+  }
+  for (const d of DAY_ORDER) if (days[d].length === 0) days[d] = [{ type: 'rest', from: d }];
+  return days;
+}
+
+export function sessionTypesFor(plan: Plan, week: number, day: Day, ctx: Context = DEFAULT_CONTEXT): SessionType[] {
+  return slotsFor(plan, week, ctx)[day].map((s) => s.type);
+}
+
+/** The day the plan originally put this session on. */
+export function originDay(plan: Plan, week: number, day: Day, type: SessionType, ctx: Context = DEFAULT_CONTEXT): Day {
+  return slotsFor(plan, week, ctx)[day].find((s) => s.type === type)?.from ?? day;
 }
 
 // ---------- Rule 3: block rules ----------
@@ -118,11 +229,61 @@ function applyBlock(ex: Exercise, block: 1 | 2 | 3): Exercise {
   return { ...ex, sets: 3, reps: '4' };
 }
 
+export type ResolvedExercise = Exercise & {
+  /** Sets before the lighter / test-week cut. */
+  originalSets: number;
+  /** The plan.json exercise this one fills (differs from id when replaced). */
+  slotId: string;
+};
+
+/** Block rules, then my edits (permanent first, then this-week-only), then the week's cut. */
+function finishExercise(
+  plan: Plan,
+  w: PlanWeek,
+  type: SessionType,
+  adjustment: Adjustment,
+  ex: Exercise,
+  slotId: string,
+): ResolvedExercise {
+  let out: Exercise = applyBlock(ex, w.block);
+  let setsForThisWeek = false;
+  for (const e of inScopeOrder(changesOf(plan).edits, w.week)) {
+    if (e.sessionType !== type || e.exerciseId !== ex.id) continue;
+    const { sets, reps, targetKg, note } = e.changes;
+    out = { ...out };
+    if (sets !== undefined) {
+      out.sets = sets;
+      setsForThisWeek = isWeekOnly(e.scope); // a week-only set count is what I'll do: no further cut
+    }
+    if (reps !== undefined) out.reps = reps;
+    if (targetKg === null) delete out.targetKg;
+    else if (targetKg !== undefined) out.targetKg = targetKg;
+    if (note !== undefined) {
+      if (note.trim()) out.note = note;
+      else delete out.note;
+    }
+  }
+  return {
+    ...out,
+    slotId,
+    originalSets: out.sets,
+    sets: setsForThisWeek ? out.sets : adjustSets(out.sets, adjustment),
+  };
+}
+
+/** Which exercise fills a plan slot this week: the latest replacement (week-only beats permanent). */
+function exerciseInSlot(plan: Plan, week: number, type: SessionType, base: Exercise): Exercise {
+  const reps = inScopeOrder(changesOf(plan).replaces, week).filter(
+    (r) => r.sessionType === type && r.exerciseId === base.id,
+  );
+  return reps.length ? reps[reps.length - 1].with : base;
+}
+
 export interface ResolvedSession {
   type: SessionType;
   title: string;
   adjustment: Adjustment;
-  exercises?: (Exercise & { originalSets: number })[];
+  exercises?: ResolvedExercise[];
   cardio?: { minutes: [number, number]; zone: string; where: string };
   /** Tuesday intervals: number of 4-min reps at Zone 4. */
   intervals?: number;
@@ -133,7 +294,7 @@ export interface ResolvedSession {
   instructions?: string;
 }
 
-/** A session as it should be shown for a given week and day. */
+/** A session as it should be shown for a given week and day (the day it's shown on). */
 export function resolveSession(
   plan: Plan,
   week: number,
@@ -143,14 +304,13 @@ export function resolveSession(
 ): ResolvedSession {
   const w = getWeek(plan, week);
   const tpl = plan.templates[type];
-  const adjustment = adjustmentFor(w, type, day);
+  const adjustment = adjustmentFor(w, type, originDay(plan, week, day, type, ctx));
   const out: ResolvedSession = { type, title: tpl.title, adjustment, instructions: tpl.instructions };
 
   if (tpl.exercises) {
-    out.exercises = tpl.exercises.map((ex) => {
-      const blocked = applyBlock(ex, w.block);
-      return { ...blocked, originalSets: blocked.sets, sets: adjustSets(blocked.sets, adjustment) };
-    });
+    out.exercises = tpl.exercises.map((base) =>
+      finishExercise(plan, w, type, adjustment, exerciseInSlot(plan, week, type, base), base.id),
+    );
   }
   if (tpl.cardio) {
     out.cardio = { ...tpl.cardio, minutes: adjustMinutes(tpl.cardio.minutes, adjustment) };
@@ -176,12 +336,11 @@ export function resolveSwap(
   day: Day,
   type: SessionType,
   swapId: string,
-): (Exercise & { originalSets: number }) | null {
+): ResolvedExercise | null {
   const ex = plan.exerciseLibrary.find((e) => e.id === swapId);
   if (!ex) return null;
   const w = getWeek(plan, week);
-  const blocked = applyBlock(ex, w.block);
-  return { ...blocked, originalSets: blocked.sets, sets: adjustSets(blocked.sets, adjustmentFor(w, type, day)) };
+  return finishExercise(plan, w, type, adjustmentFor(w, type, originDay(plan, week, day, type)), ex, swapId);
 }
 
 export function sessionsFor(plan: Plan, week: number, day: Day, ctx: Context = DEFAULT_CONTEXT): ResolvedSession[] {

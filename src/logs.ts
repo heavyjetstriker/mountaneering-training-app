@@ -1,5 +1,5 @@
 // Log logic for milestone 2. Pure functions only, no React, no storage.
-import type { Day, Exercise, PlanWeek, SessionType } from './schema';
+import type { Exercise, PlanWeek, SessionType } from './schema';
 import type { AppData, EffortZone, LoggedSet, SessionLog, SetUnit } from './logSchema';
 import type { ResolvedSession } from './plan';
 import { shortDate } from './dates';
@@ -199,7 +199,7 @@ export interface CardioPrefill {
   notePlaceholder: string;
 }
 
-export function cardioPrefill(session: ResolvedSession, week: PlanWeek, day: Day): CardioPrefill {
+export function cardioPrefill(session: ResolvedSession, week: PlanWeek): CardioPrefill {
   const out: CardioPrefill = { minutes: null, packKg: null, effortZone: null, notePlaceholder: '' };
   switch (session.type) {
     case 'zone2Incline':
@@ -207,7 +207,7 @@ export function cardioPrefill(session: ResolvedSession, week: PlanWeek, day: Day
     case 'zone2Stairs':
       out.minutes = session.cardio ? session.cardio.minutes[1] : null;
       out.effortZone = session.cardio ? zoneFrom(session.cardio.zone) : null;
-      if (session.type === 'zone2Long' && day === 'tue' && week.intervals && week.kind !== 'lighter') {
+      if (session.type === 'zone2Long' && week.intervals && week.kind !== 'lighter') {
         out.notePlaceholder = 'Intervals done?';
       }
       break;

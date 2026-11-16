@@ -26,3 +26,7 @@ Run these from the repo root, in order. Stop and fix anything that fails.
    for unreadable stored data.
 
 Report what you checked and anything that still looks off.
+6. Plan changes (milestone 3): the `m3-*` shots run one flow in a single tab (seeded once): edit
+   back squat, replace pull-ups, move Saturday (with the Friday confirm), edit week 2, the changes
+   list in More, pause a week, Today while paused, then Reset all. Check the changes list reads in
+   plain words and that everything is back to the original plan after the reset.

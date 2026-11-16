@@ -413,3 +413,32 @@ del { text-decoration-thickness: 1px; }
 }
 .option-row:hover { background: var(--bgColor-muted); }
 .option-name { font-weight: var(--base-text-weight-medium); }
+
+/* ---------- milestone 3: plan changes ---------- */
+.exercise--button {
+  width: 100%;
+  background: none;
+  border-left: 0;
+  border-right: 0;
+  border-bottom: 0;
+  text-align: left;
+  cursor: pointer;
+}
+.exercise--button:hover { background: var(--bgColor-muted); }
+.exercise--button > div:first-child { flex: 1; min-width: 0; }
+.exercise-chevron { flex: none; margin-right: calc(var(--base-size-4) * -1); }
+
+.input--grow { flex: 1; min-width: 0; }
+.field-error { color: var(--fgColor-danger); font-size: var(--base-text-size-sm); }
+.checkbox-field { align-items: center; cursor: pointer; }
+.checkbox { flex: none; width: var(--base-size-20); height: var(--base-size-20); margin: 0; accent-color: var(--bgColor-accent-emphasis); }
+
+.dialog { max-height: calc(100dvh - var(--base-size-32)); overflow-y: auto; }
+.option-day { display: grid; gap: var(--base-size-2); }
+
+.change-row { align-items: center; justify-content: space-between; }
+.change-text { flex: 1; min-width: 0; }
+.box-header + ul > li.box-row:first-child { border-top: 0; }
+
+.week-targets { display: flex; align-items: center; justify-content: space-between; gap: var(--base-size-8); }
+.week-targets .btn-invisible { flex: none; margin-right: calc(var(--base-size-8) * -1); }

@@ -6,6 +6,7 @@ import { dateOf, getWeek, positionOn, sessionTypesFor, TOTAL_WEEKS } from '../pl
 import { DayHeader } from '../components/DayHeader';
 import { DaySessions } from '../components/DaySessions';
 import { WeekProgress } from '../components/WeekProgress';
+import { WeekTargetsDialog } from '../components/WeekTargetsDialog';
 import { useAppData } from '../store';
 import { dayStatus, type DayStatus } from '../logs';
 
@@ -28,6 +29,7 @@ export function WeekView({ plan, today }: { plan: Plan; today: string }) {
   const [week, setWeek] = useState(() => initialWeek(plan, today));
   const [openDay, setOpenDay] = useState<Day | null>(null);
   const { logs } = useAppData();
+  const [editingWeek, setEditingWeek] = useState(false);
   const w = getWeek(plan, week);
 
   if (openDay) {
@@ -66,7 +68,16 @@ export function WeekView({ plan, today }: { plan: Plan; today: string }) {
         </div>
         <WeekProgress week={week} />
         {w.notes && <p className="text-muted">{w.notes}</p>}
+        <div className="week-targets text-small">
+          <span className="text-muted">
+            Saturday {w.longHike.hours} with {w.longHike.packKg}. Sunday {w.sunday}.
+          </span>
+          <button className="btn-invisible" onClick={() => setEditingWeek(true)}>
+            Edit week
+          </button>
+        </div>
       </header>
+      {editingWeek && <WeekTargetsDialog week={w} onClose={() => setEditingWeek(false)} />}
 
       <ul className="box">
         {DAY_ORDER.map((d) => {

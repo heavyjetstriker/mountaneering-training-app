@@ -29,7 +29,7 @@ export function CardioLog({ plan, target, onClose }: { plan: Plan; target: LogTa
   const { date, week, day, type } = target;
   const session = useMemo(() => resolveSession(plan, week, day, type), [plan, week, day, type]);
   const isTest = logKind(type) === 'test';
-  const prefill = useMemo(() => cardioPrefill(session, getWeek(plan, week), day), [session, plan, week, day]);
+  const prefill = useMemo(() => cardioPrefill(session, getWeek(plan, week)), [session, plan, week]);
   const [existing] = useState(() => logFor(data.logs, date, type));
 
   const [base] = useState<Form>(() => {

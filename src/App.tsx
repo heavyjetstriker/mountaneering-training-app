@@ -18,6 +18,8 @@ import { CardioLog } from './views/CardioLog';
 import { LogActionsContext, type LogActions, type LogTarget } from './logContext';
 import { logKind } from './logs';
 import { getStore, useStore } from './store';
+import { buildEffectivePlan } from './plan';
+import { MoreView } from './views/MoreView';
 
 type Tab = 'today' | 'week' | 'tests' | 'trips' | 'more';
 
@@ -73,12 +75,15 @@ function Flash({
   );
 }
 
-export function App({ plan }: { plan: Plan }) {
+export function App({ plan: basePlan }: { plan: Plan }) {
   const [tab, setTab] = useState<Tab>('today');
   const realToday = useToday();
   const preview = previewDate();
   const today = preview ?? realToday;
-  const { corruptCopyKey, saveFailed } = useStore();
+  const { corruptCopyKey, saveFailed, data } = useStore();
+  // Rule 7: every screen reads plan.json with my changes applied.
+  const effective = useMemo(() => buildEffectivePlan(basePlan, data.overrides), [basePlan, data.overrides]);
+  const plan = effective;
 
   // The log screen opens full-screen over the current tab; the tab stays mounted underneath.
   const [logging, setLogging] = useState<LogTarget | null>(null);
@@ -91,6 +96,9 @@ export function App({ plan }: { plan: Plan }) {
         setNotice(null);
         setLogging(target);
         window.scrollTo(0, 0);
+      },
+      notify(text) {
+        setNotice(text);
       },
     }),
     [],
@@ -154,12 +162,7 @@ export function App({ plan }: { plan: Plan }) {
           {tab === 'trips' && (
             <Placeholder title="Trips" text="Planned and done hikes, with route links, arrive in milestone 6." />
           )}
-          {tab === 'more' && (
-            <Placeholder
-              title="More"
-              text="Gear checklist, your plan changes, settings and backup arrive in milestones 3, 4 and 6."
-            />
-          )}
+          {tab === 'more' && <MoreView basePlan={basePlan} plan={plan} today={today} />}
         </main>
         {!logging && (
           <nav className="tabbar" aria-label="Sections">
