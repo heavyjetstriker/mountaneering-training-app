@@ -47,7 +47,8 @@
     "zone2Long": {
       "type": "zone2Long",
       "title": "Zone 2",
-      "cardio": { "minutes": [60, 90], "zone": "Zone 2", "where": "Incline treadmill, stairmaster or a hilly trail" }
+      "cardio": { "minutes": [60, 90], "zone": "Zone 2", "where": "Incline treadmill, stairmaster or a hilly trail" },
+      "intervalsHow": "In the middle of the Zone 2 session, on a steep incline treadmill or hill. 3 min easy between reps. No pack."
     },
     "zone2Stairs": {
       "type": "zone2Stairs",
@@ -61,22 +62,22 @@
     "testDriftVertical": {
       "type": "testDriftVertical",
       "title": "Drift test and vertical test",
-      "instructions": "Run the drift test and the vertical test as described in your training plan, then enter the results in the Tests tab."
+      "instructions": "Drift test: use a chest strap, not a wrist sensor. On a flat treadmill or a flat loop, build up over 15 min to an easy effort, then hold a steady pace for 60 min while recording heart rate. Note your starting HR and the average HR of the first and second 30 min.\nVertical test: 60 min on the stairmaster or incline treadmill at a fixed incline (e.g. 15%) with a 10 kg pack, at a steady Zone 2. Record vertical metres and average HR. Do both under the same conditions in week 1 and week 12."
     },
     "testThreshold": {
       "type": "testThreshold",
       "title": "Threshold test",
-      "instructions": "After the warm-up, 30 min hard, steady effort on the incline treadmill or uphill. Log the average heart rate as your threshold HR. Then easy Zone 2 until the session reaches about 60 min."
+      "instructions": "After the warm-up, 30 min hard, steady effort on the incline treadmill or uphill, on a different day from the drift test. Log the average heart rate as your threshold HR; it approximates your anaerobic threshold. Then easy Zone 2 until the session reaches about 60 min."
     },
     "testDriftRetest": {
       "type": "testDriftRetest",
       "title": "Drift retest",
-      "instructions": "Your intervals are still off, so repeat the drift test as described in your training plan. The threshold gap is recalculated with your latest threshold result."
+      "instructions": "Your intervals are still off, so repeat the drift test: chest strap, flat treadmill or loop, 15 min build-up to an easy effort, then 60 min at a steady pace. Note your starting HR and the average HR of each 30-min half. The threshold gap is recalculated with your latest threshold result."
     },
     "longDayTest": {
       "type": "longDayTest",
       "title": "Long-day test",
-      "instructions": "5 h hike with a 12–14 kg pack."
+      "instructions": "5 h hike with a 12–14 kg pack on the hilliest route you can reach, including a real descent. You're ready for multi-day treks if you finish feeling you could do it again the next day."
     }
   },
   "exerciseLibrary": [

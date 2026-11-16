@@ -41,3 +41,9 @@ Report what you checked and anything that still looks off.
    previews make "Last export" look older than it is.
 8. Icons: `python3 scripts/make_icons.py` regenerates public/icons/ from public/favicon.svg. Only
    needed if the favicon changes.
+9. Tests and intervals (milestone 5): the `m5-*` shots run on an empty seed: the week 1 test card
+   with its steps, the drift + vertical form with the live result, a failing drift, validation,
+   the week 2 threshold (gap 8.6%, on), week 5 Tuesday with intervals (asserted equal on Today and
+   in the Week view), week 8 without the retest, the week 12 vertical compared with week 1, delete
+   from history, and the import dialog's Test results row. A second seed with a 13.6% gap shows
+   week 5 intervals off and the week 8 drift retest.

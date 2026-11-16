@@ -2,6 +2,8 @@ import type { ReactNode } from 'react';
 import type { PlanWeek } from '../schema';
 import { ChevronRightIcon } from '@primer/octicons-react';
 import type { ResolvedExercise, ResolvedSession } from '../plan';
+import { GAP_LIMIT, pctText } from '../tests';
+import { useLogActions } from '../logContext';
 
 const BLOCK_HINT: Record<1 | 2 | 3, string> = {
   1: 'Moderate weight, 2–3 reps in reserve.',
@@ -11,6 +13,30 @@ const BLOCK_HINT: Record<1 | 2 | 3, string> = {
 
 function minutes([lo, hi]: [number, number]): string {
   return lo === hi ? `${lo} min` : `${lo}–${hi} min`;
+}
+
+/** Why Tuesday intervals are off, in plain words, with a way to fix it. */
+function IntervalsOff({ off }: { off: NonNullable<ResolvedSession['intervalsOff']> }) {
+  const { openTests } = useLogActions();
+  if (off.reason === 'gapTooBig') {
+    return (
+      <span className="text-muted">
+        Off: threshold gap {pctText(off.gap)}. Intervals start at {GAP_LIMIT}% or less. Keep Tuesday fully Zone 2.
+      </span>
+    );
+  }
+  return (
+    <>
+      <span className="text-muted">
+        {off.reason === 'noThreshold'
+          ? 'Off until you add a threshold test.'
+          : 'Off until a drift test sets your aerobic threshold.'}
+      </span>
+      <button className="link-button" onClick={openTests}>
+        Add a test result
+      </button>
+    </>
+  );
 }
 
 /** One session as a GitHub-style box: header row, then list rows. */
@@ -87,14 +113,17 @@ export function SessionCard({
           {s.intervals && (
             <div className="box-row">
               <dt>Intervals</dt>
-              <dd>{s.intervals} × 4 min at Zone 4</dd>
+              <dd className="intervals-off">
+                <span>{s.intervals} × 4 min at Zone 4</span>
+                {s.intervalsHow && <span className="text-muted text-small">{s.intervalsHow}</span>}
+              </dd>
             </div>
           )}
-          {s.intervalsLocked && (
+          {s.intervalsLocked && s.intervalsOff && (
             <div className="box-row">
               <dt>Intervals</dt>
-              <dd className="text-muted">
-                Off. {s.intervalsLocked} × 4 min at Zone 4 once your tests show a threshold gap of 10% or less.
+              <dd className="intervals-off">
+                <IntervalsOff off={s.intervalsOff} />
               </dd>
             </div>
           )}
@@ -102,7 +131,12 @@ export function SessionCard({
       )}
 
       {s.target && <p className="box-row target">{s.target}</p>}
-      {s.instructions && <p className="box-row text-muted">{s.instructions}</p>}
+      {s.instructions &&
+        s.instructions.split('\n').map((para) => (
+          <p className="box-row text-muted" key={para}>
+            {para}
+          </p>
+        ))}
       {footer}
     </article>
   );

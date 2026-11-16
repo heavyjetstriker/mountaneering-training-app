@@ -46,8 +46,10 @@ function whenText(iso: string): string {
   return `${shortDate(localISO(d))}, ${hm}`;
 }
 
-function contentsText(s: Pick<Summary, 'logs' | 'changes'>): string {
-  return `${plural(s.logs, 'log')} and ${plural(s.changes, 'plan change')}`;
+function contentsText(s: Pick<Summary, 'logs' | 'changes' | 'tests'>): string {
+  const parts = [plural(s.logs, 'log'), plural(s.changes, 'plan change')];
+  if (s.tests) parts.push(plural(s.tests, 'test result'));
+  return `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}`;
 }
 
 function ImportDialog({ file, onCancel, onDone }: { file: BackupFile; onCancel: () => void; onDone: (error?: string) => void }) {
@@ -104,6 +106,11 @@ function ImportDialog({ file, onCancel, onDone }: { file: BackupFile; onCancel: 
             <th scope="row">Plan changes</th>
             <td>{incoming.changes}</td>
             <td>{here.changes}</td>
+          </tr>
+          <tr className="box-row">
+            <th scope="row">Test results</th>
+            <td>{incoming.tests}</td>
+            <td>{here.tests}</td>
           </tr>
           <tr className="box-row">
             <th scope="row">Newest log</th>
@@ -189,7 +196,7 @@ export function BackupBox({ today }: { today: string }) {
         <h2 className="box-title">Backup</h2>
       </header>
       <p className="box-row box-row--note">
-        All your logs and plan changes in one file. Export it to keep a copy, or to move to your PC and import it there.
+        All your logs, plan changes and test results in one file. Export it to keep a copy, or to move to your PC and import it there.
       </p>
       {error && (
         <div className="box-row box-row--flash">

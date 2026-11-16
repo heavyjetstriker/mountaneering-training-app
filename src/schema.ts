@@ -40,6 +40,8 @@ export const SessionTemplateSchema = z.object({
     })
     .optional(),
   instructions: z.string().optional(),
+  /** Tuesday Zone 2: how to run the intervals when they're on. */
+  intervalsHow: z.string().optional(),
 });
 export type SessionTemplate = z.infer<typeof SessionTemplateSchema>;
 

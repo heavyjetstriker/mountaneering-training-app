@@ -2,9 +2,11 @@ import { useMemo, useState } from 'react';
 import type { Plan } from '../schema';
 import type { EffortZone, SessionLog } from '../logSchema';
 import { getWeek, resolveSession } from '../plan';
+import { useWeekContext } from '../useWeekContext';
 import { cardioPrefill, deleteLog, logFor, logKind, upsertLog } from '../logs';
 import { getStore, newId, useAppData } from '../store';
-import type { LogTarget } from '../logContext';
+import { useLogActions, type LogTarget } from '../logContext';
+import { testsForSession } from '../tests';
 import { Segmented } from '../components/Segmented';
 import { LogFrame, numberText, parseNumber } from './LogFrame';
 
@@ -27,7 +29,8 @@ const ZONES: { value: EffortZone; label: string; ariaLabel: string }[] = ([1, 2,
 export function CardioLog({ plan, target, onClose }: { plan: Plan; target: LogTarget; onClose: (saved?: string) => void }) {
   const data = useAppData();
   const { date, week, day, type } = target;
-  const session = useMemo(() => resolveSession(plan, week, day, type), [plan, week, day, type]);
+  const ctx = useWeekContext(plan, week);
+  const session = useMemo(() => resolveSession(plan, week, day, type, ctx), [plan, week, day, type, ctx]);
   const isTest = logKind(type) === 'test';
   const prefill = useMemo(() => cardioPrefill(session, getWeek(plan, week)), [session, plan, week]);
   const [existing] = useState(() => logFor(data.logs, date, type));
@@ -56,7 +59,10 @@ export function CardioLog({ plan, target, onClose }: { plan: Plan; target: LogTa
   const dirty = JSON.stringify(form) !== JSON.stringify(base);
   const set = <K extends keyof Form>(k: K, v: Form[K]) => setForm((f) => ({ ...f, [k]: v }));
 
-  const save = () => {
+  const { openTestForm } = useLogActions();
+  const testTypes = testsForSession(type);
+
+  const save = (then?: () => void) => {
     const minutes = parseNumber(form.minutes);
     const avgHr = isTest ? null : parseNumber(form.avgHr);
     const packKg = isTest ? null : parseNumber(form.packKg);
@@ -75,7 +81,10 @@ export function CardioLog({ plan, target, onClose }: { plan: Plan; target: LogTa
       savedAt: new Date().toISOString(),
     };
     const store = getStore();
-    onClose(store.save(upsertLog(store.getState().data, log)) ? `${session.title} saved.` : undefined);
+    const ok = store.save(upsertLog(store.getState().data, log));
+    // Straight on to the results: the result form replaces this screen and closes both.
+    if (ok && then) then();
+    else onClose(ok ? `${session.title} saved.` : undefined);
   };
 
   const remove = () => {
@@ -91,7 +100,7 @@ export function CardioLog({ plan, target, onClose }: { plan: Plan; target: LogTa
       date={date}
       dirty={dirty}
       canDelete={!!existing}
-      onSave={save}
+      onSave={() => save()}
       onDiscard={() => onClose()}
       onDelete={remove}
     >
@@ -164,7 +173,14 @@ export function CardioLog({ plan, target, onClose }: { plan: Plan; target: LogTa
         </div>
       </div>
 
-      {isTest && <p className="text-muted text-small">Enter test results in the Tests tab (milestone 5).</p>}
+      {testTypes.length > 0 && (
+        <p className="text-muted text-small">
+          The heart rates and metres go in the test results.{' '}
+          <button className="link-button" onClick={() => save(() => openTestForm({ types: testTypes, date, session: target }))}>
+            Save and enter results
+          </button>
+        </p>
+      )}
     </LogFrame>
   );
 }

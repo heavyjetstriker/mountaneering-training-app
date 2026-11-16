@@ -3,6 +3,7 @@ import { CheckCircleFillIcon, CheckCircleIcon, ChevronLeftIcon, ChevronRightIcon
 import type { Day, Plan } from '../schema';
 import { DAY_NAMES, DAY_ORDER, shortDate } from '../dates';
 import { dateOf, getWeek, positionOn, sessionTypesFor, TOTAL_WEEKS } from '../plan';
+import { useWeekContext } from '../useWeekContext';
 import { DayHeader } from '../components/DayHeader';
 import { DaySessions } from '../components/DaySessions';
 import { WeekProgress } from '../components/WeekProgress';
@@ -31,6 +32,7 @@ export function WeekView({ plan, today }: { plan: Plan; today: string }) {
   const { logs } = useAppData();
   const [editingWeek, setEditingWeek] = useState(false);
   const w = getWeek(plan, week);
+  const ctx = useWeekContext(plan, week);
 
   if (openDay) {
     return (
@@ -82,7 +84,7 @@ export function WeekView({ plan, today }: { plan: Plan; today: string }) {
       <ul className="box">
         {DAY_ORDER.map((d) => {
           const date = dateOf(plan, week, d);
-          const types = sessionTypesFor(plan, week, d);
+          const types = sessionTypesFor(plan, week, d, ctx);
           const titles = types.map((t) => plan.templates[t].title);
           const isToday = date === today;
           const status = date <= today ? dayStatus(logs, date, types) : null;

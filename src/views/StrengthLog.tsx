@@ -3,6 +3,7 @@ import { ArrowSwitchIcon, CheckIcon, DashIcon, PlusIcon } from '@primer/octicons
 import type { Exercise, Plan } from '../schema';
 import type { LoggedSet, SessionLog, SetUnit } from '../logSchema';
 import { resolveSession, resolveSwap } from '../plan';
+import { useWeekContext } from '../useWeekContext';
 import { lastSetsFor, lastTimeText, logFor, parseReps, prefillSets, UNIT_LABEL, upsertLog, deleteLog } from '../logs';
 import { getStore, newId, useAppData } from '../store';
 import { clearDraft, readDraft, writeDraft, StrengthFormSchema, type StrengthForm } from '../drafts';
@@ -43,14 +44,15 @@ function step(kg: string, delta: number): string {
 export function StrengthLog({ plan, target, onClose }: { plan: Plan; target: LogTarget; onClose: (saved?: string) => void }) {
   const data = useAppData();
   const { date, week, day, type } = target;
-  const session = useMemo(() => resolveSession(plan, week, day, type), [plan, week, day, type]);
+  const ctx = useWeekContext(plan, week);
+  const session = useMemo(() => resolveSession(plan, week, day, type, ctx), [plan, week, day, type, ctx]);
   const planned = useMemo(() => new Map((session.exercises ?? []).map((e) => [e.id, e])), [session]);
   // Frozen when the screen opens, so saving doesn't reshuffle what's on screen.
   const [existing] = useState(() => logFor(data.logs, date, type));
   const [logs] = useState(() => data.logs);
 
   const resolveCurrent = (plannedId: string, exerciseId: string): ResolvedExercise | undefined =>
-    exerciseId === plannedId ? planned.get(plannedId) : resolveSwap(plan, week, day, type, exerciseId) ?? undefined;
+    exerciseId === plannedId ? planned.get(plannedId) : resolveSwap(plan, week, day, type, exerciseId, ctx) ?? undefined;
 
   // ---------- starting form: the saved log, or the prefill ----------
   const [base] = useState<StrengthForm>(() => {
@@ -322,7 +324,7 @@ export function StrengthLog({ plan, target, onClose }: { plan: Plan; target: Log
           <p className="box-row box-row--note">For this session only.</p>
           <ul>
             {(swapPlanned.swaps ?? []).map((id) => {
-              const ex = resolveSwap(plan, week, day, type, id);
+              const ex = resolveSwap(plan, week, day, type, id, ctx);
               if (!ex) return null;
               return (
                 <li key={id}>

@@ -6,6 +6,7 @@ import { getStore, newId, useAppData } from '../store';
 import { deleteLog, logFor, logKind, logSummary, STATUS_TEXT, upsertLog } from '../logs';
 import { readDraft } from '../drafts';
 import { useLogActions } from '../logContext';
+import { testsForSession } from '../tests';
 
 const UNDO_MS = 6000;
 
@@ -67,7 +68,11 @@ export function SessionFooter({
     };
     return (
       <div className="box-row box-footer">
-        <button className="btn btn-primary btn-grow" onClick={() => openLog(target)}>
+        {/* On a test session, Enter results is the main action. */}
+        <button
+          className={`btn btn-grow ${testsForSession(session.type).length ? '' : 'btn-primary'}`}
+          onClick={() => openLog(target)}
+        >
           {hasDraft ? 'Continue log' : 'Log session'}
         </button>
         <button className="btn" onClick={skip}>

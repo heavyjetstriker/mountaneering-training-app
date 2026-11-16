@@ -11,13 +11,17 @@ import {
   resolveSwap,
   buildEffectivePlan,
   slotsFor,
+  DEFAULT_CONTEXT,
+  type Context,
   weekStartDate,
 } from './plan';
 import type { OverrideRecord, PlanOverride } from './logSchema';
 
 const plan = parsePlan(rawPlan);
+const C = DEFAULT_CONTEXT;
+const ON: Context = { intervals: { on: true, gap: 8.6 } };
 const exercise = (week: number, day: 'mon' | 'wed', type: 'strengthA' | 'strengthB', id: string) =>
-  resolveSession(plan, week, day, type).exercises!.find((e) => e.id === id)!;
+  resolveSession(plan, week, day, type, C).exercises!.find((e) => e.id === id)!;
 
 describe('dates (rule 0)', () => {
   it('knows weekdays', () => {
@@ -50,7 +54,7 @@ describe('plan.json', () => {
 describe('which week and day (rule 1)', () => {
   it('starts on Monday 16 Nov 2026 with Strength A and Zone 2 incline', () => {
     expect(positionOn(plan, '2026-11-16')).toMatchObject({ status: 'active', week: 1, day: 'mon' });
-    expect(sessionTypesFor(plan, 1, 'mon')).toEqual(['strengthA', 'zone2Incline']);
+    expect(sessionTypesFor(plan, 1, 'mon', C)).toEqual(['strengthA', 'zone2Incline']);
   });
   it('shows "before" and "complete" outside the 12 weeks', () => {
     expect(positionOn(plan, '2026-11-15').status).toBe('before');
@@ -62,7 +66,7 @@ describe('which week and day (rule 1)', () => {
     expect(positionOn(plan, '2027-01-03')).toMatchObject({ week: 7, day: 'sun' });
   });
   it('Friday is always rest', () => {
-    for (let w = 1; w <= 12; w++) expect(sessionTypesFor(plan, w, 'fri')).toEqual(['rest']);
+    for (let w = 1; w <= 12; w++) expect(sessionTypesFor(plan, w, 'fri', C)).toEqual(['rest']);
   });
   it('pauses push the plan back by whole weeks', () => {
     const pauses = [{ fromWeek: 6, weeks: 1 }];
@@ -90,17 +94,17 @@ describe('which week and day (rule 1)', () => {
 
 describe('day changes (rule 2)', () => {
   it('puts the tests on the right days', () => {
-    expect(sessionTypesFor(plan, 1, 'tue')).toEqual(['testDriftVertical']);
-    expect(sessionTypesFor(plan, 2, 'tue')).toEqual(['testThreshold']);
-    expect(sessionTypesFor(plan, 3, 'tue')).toEqual(['zone2Long']);
-    expect(sessionTypesFor(plan, 12, 'tue')).toEqual(['testDriftVertical']);
-    expect(sessionTypesFor(plan, 12, 'sat')).toEqual(['longDayTest']);
-    expect(sessionTypesFor(plan, 11, 'sat')).toEqual(['longHike']);
+    expect(sessionTypesFor(plan, 1, 'tue', C)).toEqual(['testDriftVertical']);
+    expect(sessionTypesFor(plan, 2, 'tue', C)).toEqual(['testThreshold']);
+    expect(sessionTypesFor(plan, 3, 'tue', C)).toEqual(['zone2Long']);
+    expect(sessionTypesFor(plan, 12, 'tue', C)).toEqual(['testDriftVertical']);
+    expect(sessionTypesFor(plan, 12, 'sat', C)).toEqual(['longDayTest']);
+    expect(sessionTypesFor(plan, 11, 'sat', C)).toEqual(['longHike']);
   });
   it('week 8 retest only when intervals are still off', () => {
-    expect(sessionTypesFor(plan, 8, 'tue', { intervalsAllowed: false })).toEqual(['testDriftRetest']);
-    expect(sessionTypesFor(plan, 8, 'tue', { intervalsAllowed: true })).toEqual(['zone2Long']);
-    const tue = sessionsFor(plan, 8, 'tue', { intervalsAllowed: true })[0];
+    expect(sessionTypesFor(plan, 8, 'tue', C)).toEqual(['testDriftRetest']);
+    expect(sessionTypesFor(plan, 8, 'tue', ON)).toEqual(['zone2Long']);
+    const tue = sessionsFor(plan, 8, 'tue', ON)[0];
     expect(tue.intervals).toBeUndefined();
   });
 });
@@ -124,39 +128,39 @@ describe('block rules (rule 3)', () => {
     expect(squat).toMatchObject({ sets: 3, originalSets: 4 });
     expect(exercise(4, 'mon', 'strengthA', 'pallof-press').sets).toBe(2);
     expect(exercise(4, 'mon', 'strengthA', 'tibialis-raise').sets).toBe(1);
-    expect(resolveSession(plan, 4, 'mon', 'zone2Incline').cardio!.minutes).toEqual([20, 30]);
-    expect(resolveSession(plan, 4, 'tue', 'zone2Long').cardio!.minutes).toEqual([40, 60]);
+    expect(resolveSession(plan, 4, 'mon', 'zone2Incline', C).cardio!.minutes).toEqual([20, 30]);
+    expect(resolveSession(plan, 4, 'tue', 'zone2Long', C).cardio!.minutes).toEqual([40, 60]);
     // Week 8 is block 2: main lifts 4 × 4, then the cut.
     expect(exercise(8, 'mon', 'strengthA', 'back-squat')).toMatchObject({ sets: 3, reps: '4' });
   });
   it('lighter weeks do not cut the hike, Sunday or Thursday again', () => {
-    expect(resolveSession(plan, 4, 'sat', 'longHike')).toMatchObject({ adjustment: 'none', target: '2 h with a 6 kg pack' });
-    expect(resolveSession(plan, 4, 'sun', 'recovery').target).toBe('45 min easy walk');
-    expect(resolveSession(plan, 4, 'thu', 'me').adjustment).toBe('none');
+    expect(resolveSession(plan, 4, 'sat', 'longHike', C)).toMatchObject({ adjustment: 'none', target: '2 h with a 6 kg pack' });
+    expect(resolveSession(plan, 4, 'sun', 'recovery', C).target).toBe('45 min easy walk');
+    expect(resolveSession(plan, 4, 'thu', 'me', C).adjustment).toBe('none');
   });
   it('week 12 halves Monday to Wednesday gym work, rounded up', () => {
     expect(exercise(12, 'mon', 'strengthA', 'back-squat')).toMatchObject({ sets: 2, reps: '4' });
     expect(exercise(12, 'mon', 'strengthA', 'sl-rdl').sets).toBe(2);
-    expect(resolveSession(plan, 12, 'wed', 'zone2Stairs').cardio!.minutes).toEqual([15, 25]);
-    expect(resolveSession(plan, 12, 'sat', 'longDayTest').adjustment).toBe('none');
+    expect(resolveSession(plan, 12, 'wed', 'zone2Stairs', C).cardio!.minutes).toEqual([15, 25]);
+    expect(resolveSession(plan, 12, 'sat', 'longDayTest', C).adjustment).toBe('none');
   });
   it('intervals only show in weeks 5–7 once unlocked', () => {
-    expect(resolveSession(plan, 5, 'tue', 'zone2Long')).toMatchObject({ intervalsLocked: 4 });
-    expect(resolveSession(plan, 5, 'tue', 'zone2Long', { intervalsAllowed: true })).toMatchObject({ intervals: 4 });
-    expect(resolveSession(plan, 7, 'tue', 'zone2Long', { intervalsAllowed: true }).intervals).toBe(6);
-    expect(resolveSession(plan, 9, 'tue', 'zone2Long', { intervalsAllowed: true }).intervals).toBeUndefined();
+    expect(resolveSession(plan, 5, 'tue', 'zone2Long', C)).toMatchObject({ intervalsLocked: 4 });
+    expect(resolveSession(plan, 5, 'tue', 'zone2Long', ON)).toMatchObject({ intervals: 4 });
+    expect(resolveSession(plan, 7, 'tue', 'zone2Long', ON).intervals).toBe(6);
+    expect(resolveSession(plan, 9, 'tue', 'zone2Long', ON).intervals).toBeUndefined();
   });
 });
 
 describe('one-off swaps', () => {
   it('uses the swap\'s own dose with the block rules and week cuts', () => {
-    const swap = (week: number, id: string) => resolveSwap(plan, week, 'mon', 'strengthA', id)!;
+    const swap = (week: number, id: string) => resolveSwap(plan, week, 'mon', 'strengthA', id, C)!;
     expect(swap(1, 'lat-pulldown')).toMatchObject({ name: 'Lat pulldown', sets: 4, reps: '5–6' });
     expect(swap(5, 'lat-pulldown')).toMatchObject({ sets: 4, reps: '4' }); // main lift, block 2
     expect(swap(5, 'inverted-rows')).toMatchObject({ sets: 4, reps: '8' }); // accessory
     expect(swap(4, 'lat-pulldown')).toMatchObject({ sets: 3, originalSets: 4 }); // lighter week
     expect(swap(12, 'lat-pulldown')).toMatchObject({ sets: 2, reps: '4' }); // block 3, halved
-    expect(resolveSwap(plan, 1, 'mon', 'strengthA', 'nope')).toBeNull();
+    expect(resolveSwap(plan, 1, 'mon', 'strengthA', 'nope', C)).toBeNull();
   });
 });
 
@@ -170,14 +174,14 @@ const rec = (override: PlanOverride, createdAt = `2026-11-16T10:00:${String(++se
 });
 const eff = (...records: OverrideRecord[]) => buildEffectivePlan(plan, records);
 const ex = (p: typeof plan, week: number, day: 'mon' | 'wed', type: 'strengthA' | 'strengthB', slot: string) =>
-  resolveSession(p, week, day, type).exercises!.find((e) => e.slotId === slot)!;
+  resolveSession(p, week, day, type, C).exercises!.find((e) => e.slotId === slot)!;
 
 describe('effective plan (rule 7)', () => {
   it('with no changes it behaves exactly like plan.json', () => {
     const p = eff();
     for (const week of [1, 4, 5, 8, 12]) {
       for (const day of ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const) {
-        expect(sessionsFor(p, week, day)).toEqual(sessionsFor(plan, week, day));
+        expect(sessionsFor(p, week, day, C)).toEqual(sessionsFor(plan, week, day, C));
       }
     }
     expect(dateOf(p, 6, 'mon')).toBe(dateOf(plan, 6, 'mon'));
@@ -235,21 +239,21 @@ describe('effective plan (rule 7)', () => {
 
   it('moves all of a day\'s sessions, stacking after the target day\'s own', () => {
     const p = eff(rec({ kind: 'moveDay', week: 6, from: 'sat', to: 'sun' }));
-    expect(sessionTypesFor(p, 6, 'sat')).toEqual(['rest']);
-    expect(sessionTypesFor(p, 6, 'sun')).toEqual(['recovery', 'longHike']);
-    expect(sessionTypesFor(p, 5, 'sat')).toEqual(['longHike']);
+    expect(sessionTypesFor(p, 6, 'sat', C)).toEqual(['rest']);
+    expect(sessionTypesFor(p, 6, 'sun', C)).toEqual(['recovery', 'longHike']);
+    expect(sessionTypesFor(p, 5, 'sat', C)).toEqual(['longHike']);
     const mon = eff(rec({ kind: 'moveDay', week: 3, from: 'mon', to: 'tue' }));
-    expect(sessionTypesFor(mon, 3, 'tue')).toEqual(['zone2Long', 'strengthA', 'zone2Incline']);
+    expect(sessionTypesFor(mon, 3, 'tue', C)).toEqual(['zone2Long', 'strengthA', 'zone2Incline']);
   });
 
   it('replaces Friday\'s rest when a day is moved onto it, and keeps the original day\'s rules', () => {
     const p = eff(rec({ kind: 'moveDay', week: 12, from: 'mon', to: 'fri' }));
-    expect(sessionTypesFor(p, 12, 'fri')).toEqual(['strengthA', 'zone2Incline']);
-    expect(slotsFor(p, 12).fri[0].from).toBe('mon');
+    expect(sessionTypesFor(p, 12, 'fri', C)).toEqual(['strengthA', 'zone2Incline']);
+    expect(slotsFor(p, 12, C).fri[0].from).toBe('mon');
     // Week 12 Monday strength is halved; moving it to Friday doesn't change that.
     expect(ex(p, 12, 'fri' as 'mon', 'strengthA', 'back-squat')).toMatchObject({ sets: 2 });
     const sat = eff(rec({ kind: 'moveDay', week: 12, from: 'tue', to: 'sat' }));
-    expect(sessionTypesFor(sat, 12, 'sat')).toEqual(['longDayTest', 'testDriftVertical']);
+    expect(sessionTypesFor(sat, 12, 'sat', C)).toEqual(['longDayTest', 'testDriftVertical']);
   });
 
   it('applies moves in order, and ignores moving a rest day', () => {
@@ -258,17 +262,17 @@ describe('effective plan (rule 7)', () => {
       rec({ kind: 'moveDay', week: 2, from: 'thu', to: 'fri' }),
       rec({ kind: 'moveDay', week: 2, from: 'fri', to: 'sat' }),
     );
-    expect(sessionTypesFor(p, 2, 'mon')).toEqual(['strengthA', 'zone2Incline']);
-    expect(sessionTypesFor(p, 2, 'thu')).toEqual(['rest']);
-    expect(sessionTypesFor(p, 2, 'fri')).toEqual(['rest']);
-    expect(sessionTypesFor(p, 2, 'sat')).toEqual(['longHike', 'me']);
+    expect(sessionTypesFor(p, 2, 'mon', C)).toEqual(['strengthA', 'zone2Incline']);
+    expect(sessionTypesFor(p, 2, 'thu', C)).toEqual(['rest']);
+    expect(sessionTypesFor(p, 2, 'fri', C)).toEqual(['rest']);
+    expect(sessionTypesFor(p, 2, 'sat', C)).toEqual(['longHike', 'me']);
   });
 
   it('edits a week\'s targets', () => {
     const p = eff(rec({ kind: 'weekTargets', week: 6, changes: { longHike: { hours: '3.5 h', packKg: '12 kg' }, sunday: '1 h easy walk' } }));
-    expect(resolveSession(p, 6, 'sat', 'longHike').target).toBe('3.5 h with a 12 kg pack');
-    expect(resolveSession(p, 6, 'sun', 'recovery').target).toBe('1 h easy walk');
-    expect(resolveSession(p, 7, 'sat', 'longHike').target).toBe('3.5 h with a 10 kg pack');
+    expect(resolveSession(p, 6, 'sat', 'longHike', C).target).toBe('3.5 h with a 12 kg pack');
+    expect(resolveSession(p, 6, 'sun', 'recovery', C).target).toBe('1 h easy walk');
+    expect(resolveSession(p, 7, 'sat', 'longHike', C).target).toBe('3.5 h with a 10 kg pack');
     expect(p.weeks[5].notes).toBe(plan.weeks[5].notes);
   });
 
@@ -286,11 +290,11 @@ describe('effective plan (rule 7)', () => {
       rec({ kind: 'editExercise', scope: { fromWeek: 1 }, sessionType: 'strengthA', exerciseId: 'back-squat', changes: { sets: 3 } }),
       rec({ kind: 'pause', fromWeek: 2, weeks: 1 }),
     );
-    expect(sessionTypesFor(changed, 1, 'sun')).toEqual(['recovery', 'longHike']);
+    expect(sessionTypesFor(changed, 1, 'sun', C)).toEqual(['recovery', 'longHike']);
     expect(ex(changed, 1, 'mon', 'strengthA', 'back-squat').sets).toBe(3);
     expect(dateOf(changed, 2, 'mon')).toBe('2026-11-30');
     const reset = eff();
-    expect(sessionTypesFor(reset, 1, 'sun')).toEqual(['recovery']);
+    expect(sessionTypesFor(reset, 1, 'sun', C)).toEqual(['recovery']);
     expect(ex(reset, 1, 'mon', 'strengthA', 'back-squat').sets).toBe(4);
     expect(dateOf(reset, 2, 'mon')).toBe('2026-11-23');
   });
@@ -330,6 +334,6 @@ describe('start date (milestone 4)', () => {
     const p = eff(start('2027-02-15'));
     for (let w = 1; w <= 12; w++) expect(weekdayOf(dateOf(p, w, 'fri'))).toBe('fri');
     expect(positionOn(p, '2027-02-19')).toMatchObject({ day: 'fri' });
-    expect(sessionTypesFor(p, 1, 'fri')).toEqual(['rest']);
+    expect(sessionTypesFor(p, 1, 'fri', C)).toEqual(['rest']);
   });
 });

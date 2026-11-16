@@ -3,6 +3,7 @@ import { ChevronRightIcon } from '@primer/octicons-react';
 import type { Day, Plan } from '../schema';
 import { DAY_NAMES, DAY_ORDER, shortDate } from '../dates';
 import { dateOf, sessionTypesFor } from '../plan';
+import { useWeekContext } from '../useWeekContext';
 import { commitOverride } from '../actions';
 import { useLogActions } from '../logContext';
 import { Dialog } from './Dialog';
@@ -11,6 +12,7 @@ import { Dialog } from './Dialog';
 export function MoveDayDialog({ plan, week, day, onClose }: { plan: Plan; week: number; day: Day; onClose: () => void }) {
   const { notify } = useLogActions();
   const [confirmFriday, setConfirmFriday] = useState(false);
+  const ctx = useWeekContext(plan, week);
 
   const move = (to: Day) => {
     commitOverride({ kind: 'moveDay', week, from: day, to });
@@ -56,7 +58,7 @@ export function MoveDayDialog({ plan, week, day, onClose }: { plan: Plan; week: 
       </p>
       <ul>
         {DAY_ORDER.filter((d) => d !== day).map((d) => {
-          const titles = sessionTypesFor(plan, week, d).map((t) => plan.templates[t].title);
+          const titles = sessionTypesFor(plan, week, d, ctx).map((t) => plan.templates[t].title);
           return (
             <li key={d}>
               <button className="box-row option-row" onClick={() => (d === 'fri' ? setConfirmFriday(true) : move(d))}>

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import rawPlan from './data/plan.json';
 import { parsePlan, type Exercise } from './schema';
 import { emptyAppData, type LoggedSet, type SessionLog } from './logSchema';
-import { getWeek, resolveSession } from './plan';
+import { DEFAULT_CONTEXT, getWeek, resolveSession } from './plan';
 import {
   cardioPrefill,
   dayStatus,
@@ -22,6 +22,7 @@ import {
 } from './logs';
 
 const plan = parsePlan(rawPlan);
+const C = DEFAULT_CONTEXT;
 
 const squat: Exercise = { id: 'back-squat', name: 'Back squat', sets: 4, reps: '5', mainLift: true };
 
@@ -189,7 +190,7 @@ describe('cardio prefill', () => {
   });
 
   const prefill = (week: number, day: 'mon' | 'tue' | 'thu' | 'sat' | 'sun', type: Parameters<typeof resolveSession>[3]) =>
-    cardioPrefill(resolveSession(plan, week, day, type), getWeek(plan, week));
+    cardioPrefill(resolveSession(plan, week, day, type, C), getWeek(plan, week));
 
   it('Zone 2: upper end after the lighter-week cut', () => {
     expect(prefill(1, 'mon', 'zone2Incline')).toMatchObject({ minutes: 45, effortZone: 2, packKg: null });

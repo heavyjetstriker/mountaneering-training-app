@@ -12,9 +12,11 @@ import { isValidISO, localISO, shortDate } from './dates';
 import { TodayView } from './views/TodayView';
 import { WeekView } from './views/WeekView';
 import { Placeholder } from './views/Placeholder';
+import { TestsView } from './views/TestsView';
+import { TestForm } from './views/TestForm';
 import { StrengthLog } from './views/StrengthLog';
 import { CardioLog } from './views/CardioLog';
-import { LogActionsContext, type LogActions, type LogTarget } from './logContext';
+import { LogActionsContext, type LogActions, type LogTarget, type TestFormTarget } from './logContext';
 import { logKind } from './logs';
 import { getStore, useStore } from './store';
 import { buildEffectivePlan } from './plan';
@@ -69,14 +71,29 @@ export function App({ plan: basePlan }: { plan: Plan }) {
 
   // The log screen opens full-screen over the current tab; the tab stays mounted underneath.
   const [logging, setLogging] = useState<LogTarget | null>(null);
+  const [testing, setTesting] = useState<TestFormTarget | null>(null);
+  // Which full-screen form is open (refs, so the actions below never see stale state).
+  const open = useRef<'log' | 'test' | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const scrollY = useRef(0);
   const actions = useMemo<LogActions>(
     () => ({
       openLog(target) {
-        scrollY.current = window.scrollY;
+        if (!open.current) scrollY.current = window.scrollY;
+        open.current = 'log';
         setNotice(null);
         setLogging(target);
+        window.scrollTo(0, 0);
+      },
+      openTestForm(target) {
+        if (!open.current) scrollY.current = window.scrollY;
+        open.current = 'test';
+        setNotice(null);
+        setTesting(target);
+        window.scrollTo(0, 0);
+      },
+      openTests() {
+        setTab('tests');
         window.scrollTo(0, 0);
       },
       notify(text) {
@@ -93,10 +110,15 @@ export function App({ plan: basePlan }: { plan: Plan }) {
     }),
     [],
   );
-  const closeLog = (saved?: string) => {
+  const closeForm = (saved?: string) => {
+    open.current = null;
     setLogging(null);
+    setTesting(null);
     if (saved) setNotice(saved);
-    requestAnimationFrame(() => window.scrollTo(0, scrollY.current));
+    // A form opened straight from this one (log → results) keeps its own scroll.
+    requestAnimationFrame(() => {
+      if (!open.current) window.scrollTo(0, scrollY.current);
+    });
   };
 
   useEffect(() => {
@@ -119,17 +141,23 @@ export function App({ plan: basePlan }: { plan: Plan }) {
             Previewing {shortDate(preview)}. <a href={window.location.pathname}>Back to today</a>
           </div>
         )}
-        {logging && (
+        {testing && (
+          <main className="screen screen--log">
+            {saveFlash && <div className="notices">{saveFlash}</div>}
+            <TestForm key={`${testing.date}-${testing.editId ?? testing.types.join()}`} plan={plan} target={testing} onClose={closeForm} />
+          </main>
+        )}
+        {logging && !testing && (
           <main className="screen screen--log">
             {saveFlash && <div className="notices">{saveFlash}</div>}
             {logKind(logging.type) === 'strength' ? (
-              <StrengthLog key={`${logging.date}-${logging.type}`} plan={plan} target={logging} onClose={closeLog} />
+              <StrengthLog key={`${logging.date}-${logging.type}`} plan={plan} target={logging} onClose={closeForm} />
             ) : (
-              <CardioLog key={`${logging.date}-${logging.type}`} plan={plan} target={logging} onClose={closeLog} />
+              <CardioLog key={`${logging.date}-${logging.type}`} plan={plan} target={logging} onClose={closeForm} />
             )}
           </main>
         )}
-        <main className="screen" hidden={!!logging}>
+        <main className="screen" hidden={!!logging || !!testing}>
           {(saveFlash || notice || update.ready || (corruptCopyKey && tab === 'today')) && (
             <div className="notices">
               {saveFlash}
@@ -155,18 +183,13 @@ export function App({ plan: basePlan }: { plan: Plan }) {
           )}
           {tab === 'today' && <TodayView plan={plan} today={today} />}
           {tab === 'week' && <WeekView plan={plan} today={today} />}
-          {tab === 'tests' && (
-            <Placeholder
-              title="Tests"
-              text="Drift, threshold and vertical test results, your Zone 2 range and the intervals switch arrive in milestone 5."
-            />
-          )}
+          {tab === 'tests' && <TestsView today={today} />}
           {tab === 'trips' && (
             <Placeholder title="Trips" text="Planned and done hikes, with route links, arrive in milestone 6." />
           )}
           {tab === 'more' && <MoreView basePlan={basePlan} plan={plan} today={today} />}
         </main>
-        {!logging && (
+        {!logging && !testing && (
           <nav className="tabbar" aria-label="Sections">
             {TABS.map((t) => (
               <button

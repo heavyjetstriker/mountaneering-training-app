@@ -59,6 +59,13 @@ describe('parseBackup', () => {
       reason: 'invalid',
     });
   });
+  it('round-trips test results and refuses one with a bad heart rate', () => {
+    const t = { id: 't', date: '2026-11-24', savedAt: '2026-11-24T19:00:00.000Z', type: 'threshold' as const, thresholdHr: 162 };
+    const file = makeBackup({ ...emptyAppData(), tests: [t] }, new Date('2026-11-25T08:00:00Z'));
+    expect(parseBackup(JSON.stringify(file))).toEqual({ ok: true, file });
+    const bad = makeBackup({ ...emptyAppData(), tests: [{ ...t, thresholdHr: 400 }] }, new Date());
+    expect(parseBackup(JSON.stringify(bad))).toEqual({ ok: false, reason: 'invalid' });
+  });
   it('refuses a start date that is not a Monday', () => {
     const data: AppData = {
       ...emptyAppData(),
@@ -70,8 +77,8 @@ describe('parseBackup', () => {
 
 describe('summarize and importWarnings', () => {
   it('summarizes logs, changes and the newest log date', () => {
-    expect(summarize(sample)).toEqual({ logs: 2, changes: 1, newestLog: '2026-11-19' });
-    expect(summarize(emptyAppData())).toEqual({ logs: 0, changes: 0, newestLog: null });
+    expect(summarize(sample)).toEqual({ logs: 2, changes: 1, tests: 0, newestLog: '2026-11-19' });
+    expect(summarize(emptyAppData())).toEqual({ logs: 0, changes: 0, tests: 0, newestLog: null });
   });
   it('gives no warning for the same data, or a newer file', () => {
     expect(importWarnings(sample, sample)).toEqual([]);

@@ -1,10 +1,12 @@
 import { useState } from 'react';
 import type { Day, Plan, SessionType } from '../schema';
 import { DAY_NAMES } from '../dates';
-import { getWeek, sessionsFor, DEFAULT_CONTEXT, type ResolvedExercise } from '../plan';
+import { getWeek, sessionsFor, type ResolvedExercise } from '../plan';
+import { useWeekContext } from '../useWeekContext';
 import { useAppData } from '../store';
 import { SessionCard } from './SessionCard';
 import { SessionFooter } from './SessionFooter';
+import { TestResultsRows } from './TestResultsRows';
 import { ExerciseEditor } from './ExerciseEditor';
 import { MoveDayDialog } from './MoveDayDialog';
 
@@ -26,7 +28,8 @@ export function DaySessions({
   const [editing, setEditing] = useState<{ type: SessionType; ex: ResolvedExercise } | null>(null);
   const [moving, setMoving] = useState(false);
   const w = getWeek(plan, week);
-  const sessions = sessionsFor(plan, week, day, DEFAULT_CONTEXT);
+  const ctx = useWeekContext(plan, week);
+  const sessions = sessionsFor(plan, week, day, ctx);
   const isRest = sessions.length === 1 && sessions[0].type === 'rest';
   const gymDay = sessions.some((s) => s.adjustment !== 'none');
   const logged = logs.some((l) => l.date === date && sessions.some((s) => s.type === l.type));
@@ -53,7 +56,12 @@ export function DaySessions({
             session={s}
             week={w}
             onEditExercise={(ex) => setEditing({ type: s.type, ex })}
-            footer={<SessionFooter session={s} date={date} today={today} week={week} day={day} />}
+            footer={
+              <>
+                <TestResultsRows session={s} date={date} today={today} week={week} day={day} />
+                <SessionFooter session={s} date={date} today={today} week={week} day={day} />
+              </>
+            }
           />
         ))
       )}

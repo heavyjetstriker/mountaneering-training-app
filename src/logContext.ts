@@ -1,5 +1,6 @@
 import { createContext, useContext } from 'react';
 import type { Day, SessionType } from './schema';
+import type { TestType } from './logSchema';
 
 /** The session a log screen is for. `date` is the day it's for, not the day it's entered. */
 export interface LogTarget {
@@ -9,15 +10,34 @@ export interface LogTarget {
   type: SessionType;
 }
 
+/** What the test result form is for: new results (from the Tests tab or a test session), or one to edit. */
+export interface TestFormTarget {
+  /** Sections shown, e.g. ['drift', 'vertical'] for the week 1 test session. */
+  types: TestType[];
+  date: string;
+  /** From a test session: saving also logs it as done (if not logged yet). */
+  session?: LogTarget;
+  /** Edit this result. */
+  editId?: string;
+}
+
 export interface LogActions {
   openLog(target: LogTarget): void;
   /** Short success Flash at the top of the screen. */
   notify(text: string): void;
   /** Switch to the More tab, optionally scrolled to a box (its element id). */
   openMore(section?: 'backup' | 'settings'): void;
+  openTestForm(target: TestFormTarget): void;
+  openTests(): void;
 }
 
-export const LogActionsContext = createContext<LogActions>({ openLog: () => {}, notify: () => {}, openMore: () => {} });
+export const LogActionsContext = createContext<LogActions>({
+  openLog: () => {},
+  notify: () => {},
+  openMore: () => {},
+  openTestForm: () => {},
+  openTests: () => {},
+});
 
 export function useLogActions(): LogActions {
   return useContext(LogActionsContext);

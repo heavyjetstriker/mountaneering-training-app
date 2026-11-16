@@ -98,6 +98,31 @@ export const OverrideRecordSchema = z.object({
 });
 export type OverrideRecord = z.infer<typeof OverrideRecordSchema>;
 
+// ---------- test results (milestone 5) ----------
+
+const Hr = z.number().int().min(60).max(230);
+const testBase = {
+  id: z.string().min(1),
+  date: ISODate.refine(isValidISO, 'not a real date'),
+  savedAt: z.string(), // ISO timestamp; orders two results on the same date
+  note: z.string().optional(),
+};
+
+export const TestResultSchema = z.discriminatedUnion('type', [
+  z.object({ ...testBase, type: z.literal('drift'), startHr: Hr, hrFirstHalf: Hr, hrSecondHalf: Hr }),
+  z.object({ ...testBase, type: z.literal('threshold'), thresholdHr: Hr }),
+  z.object({
+    ...testBase,
+    type: z.literal('vertical'),
+    verticalM: z.number().int().min(1).max(5000),
+    avgHr: Hr,
+    minutes: z.number().int().min(1).max(600).optional(),
+    packKg: z.number().min(0).max(40).optional(),
+  }),
+]);
+export type TestResult = z.infer<typeof TestResultSchema>;
+export type TestType = TestResult['type'];
+
 /** The newest AppData version this build understands. */
 export const APP_DATA_VERSION = 1;
 
@@ -106,7 +131,7 @@ export const AppDataSchema = z.object({
   logs: z.array(SessionLogSchema),
   // Added now as empty arrays so later milestones don't need a migration.
   overrides: z.array(OverrideRecordSchema),
-  tests: z.array(z.unknown()), // milestone 5
+  tests: z.array(TestResultSchema),
   trips: z.array(z.unknown()), // milestone 6
   gear: z.array(z.unknown()), // milestone 6
 });

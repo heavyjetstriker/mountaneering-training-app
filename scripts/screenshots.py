@@ -273,6 +273,131 @@ with sync_playwright() as p:
     print("offline console errors:", off_errors or "none")
     off_ctx.close()
 
+    # ---- milestone 5: tests and intervals ----
+    def seed_with(data):
+        raw = json.dumps(json.dumps(data))
+        return ("if (!sessionStorage.getItem('seeded')) { localStorage.setItem('mta.data', %s); "
+                "localStorage.removeItem('mta.drafts'); sessionStorage.setItem('seeded', '1'); }" % raw)
+
+    EMPTY = {"version": 1, "logs": [], "overrides": [], "tests": [], "trips": [], "gear": []}
+
+    def tab(pg, name):
+        pg.get_by_role("button", name=name, exact=True).click()
+        pg.wait_for_timeout(200)
+
+    def fill(pg, section, label, value):
+        pg.get_by_role("region", name=section).get_by_label(label).fill(value)
+
+    def tuesday_intervals_text(pg):
+        return pg.locator("dt:text-is('Intervals') + dd").first.inner_text()
+
+    t5 = new_page(seed_with(EMPTY))
+    t5.goto(BASE + "?date=2026-11-17")
+    tab(t5, "Tests")
+    shot(t5, "m5-tests-empty")
+    tab(t5, "Today")
+    shot(t5, "m5-w1-tue-card")  # the drift + vertical steps and Enter results
+    t5.get_by_role("button", name="Enter results").click()
+    fill(t5, "Drift test", "Starting HR", "148")
+    fill(t5, "Drift test", "First 30 min average HR", "140")
+    fill(t5, "Drift test", "Second 30 min average HR", "145")
+    fill(t5, "Vertical test", "Vertical metres", "350")
+    fill(t5, "Vertical test", "Average HR", "145")
+    assert t5.get_by_text("Under 5%: your aerobic threshold is 148 bpm, Zone 2 133–148 bpm.").is_visible()
+    shot(t5, "m5-form-drift-vertical")
+    t5.get_by_role("button", name="Save results").click()
+    assert t5.get_by_text("Drift and vertical tests saved.").is_visible()
+    assert t5.get_by_text("Done", exact=True).first.is_visible(), "session not marked done"
+    shot(t5, "m5-w1-tue-after")
+
+    # A failing drift the same week: shown, but it doesn't move the aerobic threshold.
+    tab(t5, "Tests")
+    t5.get_by_role("button", name="Add a test result").click()
+    fill(t5, "Drift test", "Starting HR", "152")
+    fill(t5, "Drift test", "First 30 min average HR", "140")
+    fill(t5, "Drift test", "Second 30 min average HR", "149")
+    assert t5.get_by_text("Repeat another day a few beats lower.").is_visible()
+    shot(t5, "m5-form-drift-fail", full=False)
+    t5.get_by_role("button", name="Save results").click()
+    assert t5.get_by_text("Aerobic threshold 148 bpm").is_visible()
+    shot(t5, "m5-tests-failed-drift")
+
+    # Validation
+    t5.get_by_role("button", name="Add a test result").click()
+    t5.get_by_role("radio", name="Threshold").click()
+    fill(t5, "Threshold test", "Threshold HR (30 min average)", "40")
+    t5.get_by_role("button", name="Save results").click()
+    assert t5.get_by_text("Heart rate between 60 and 230").is_visible()
+    shot(t5, "m5-form-validation", full=False)
+    t5.get_by_role("button", name="Cancel").click()
+    t5.get_by_role("button", name="Discard").click()
+
+    # Week 2 Tuesday: threshold → gap 8.6%, intervals on.
+    t5.goto(BASE + "?date=2026-11-24")
+    t5.get_by_role("button", name="Enter results").click()
+    fill(t5, "Threshold test", "Threshold HR (30 min average)", "162")
+    assert t5.get_by_text("Gap 8.6%: intervals on.").is_visible()
+    shot(t5, "m5-form-threshold", full=False)
+    t5.get_by_role("button", name="Save results").click()
+    tab(t5, "Tests")
+    assert t5.get_by_text("Threshold gap 8.6%, 10% or less.").is_visible()
+    shot(t5, "m5-tests-intervals-on")
+
+    # Week 5 Tuesday: intervals on, same on Today and in the Week view.
+    t5.goto(BASE + "?date=2026-12-15")
+    today_text = tuesday_intervals_text(t5)
+    assert today_text.startswith("4 × 4 min at Zone 4"), today_text
+    shot(t5, "m5-w5-tue-intervals-on")
+    tab(t5, "Week")
+    t5.get_by_role("button", name="Tue 15 Dec").click()
+    assert tuesday_intervals_text(t5) == today_text, "Week view and Today disagree"
+    t5.goto(BASE + "?date=2027-01-05")
+    assert t5.get_by_role("heading", name="Drift retest").count() == 0, "week 8 retest shown with intervals on"
+    shot(t5, "m5-w8-tue-intervals-on")
+
+    # Week 12 Tuesday: vertical only, compared with week 1.
+    t5.goto(BASE + "?date=2027-02-02")
+    t5.get_by_role("button", name="Enter results").click()
+    fill(t5, "Vertical test", "Vertical metres", "410")
+    fill(t5, "Vertical test", "Average HR", "142")
+    assert t5.get_by_text("+60 m at 3 bpm lower than your first test (17 Nov).").is_visible()
+    shot(t5, "m5-form-vertical-compare", full=False)
+    t5.get_by_role("button", name="Save results").click()
+    shot(t5, "m5-w12-tue-after")
+    tab(t5, "Tests")
+    assert t5.get_by_text("vs first test (17 Nov): +60 m at 3 bpm lower").is_visible()
+    shot(t5, "m5-tests-w12")
+
+    # Edit and delete from history.
+    t5.get_by_role("button", name="Drift 6.4%, starting HR 152").click()
+    t5.get_by_role("button", name="Delete result").click()
+    shot(t5, "m5-delete-confirm", full=False)
+    t5.get_by_role("dialog").get_by_role("button", name="Delete").click()
+    assert t5.get_by_text("Test deleted.").is_visible()
+    n_tests = t5.evaluate("JSON.parse(localStorage.getItem('mta.data')).tests.length")
+    assert n_tests == 4, n_tests
+
+    # Import dialog shows the test results row.
+    tab(t5, "More")
+    pick(t5, "old.json", backup_file(FIXTURE["logs"]))
+    assert t5.get_by_role("row", name="Test results 0 4").is_visible()
+    shot(t5, "m5-import-dialog", full=False)
+    t5.get_by_role("dialog").get_by_role("button", name="Cancel").click()
+
+    # A big gap keeps intervals off and keeps the week 8 retest.
+    big = dict(EMPTY, tests=[
+        {"id": "a", "date": "2026-11-17", "savedAt": "2026-11-17T19:00:00Z", "type": "drift",
+         "startHr": 140, "hrFirstHalf": 140, "hrSecondHalf": 142},
+        {"id": "b", "date": "2026-11-24", "savedAt": "2026-11-24T19:00:00Z", "type": "threshold", "thresholdHr": 162},
+    ])
+    g = new_page(seed_with(big))
+    g.goto(BASE + "?date=2026-12-15")
+    assert "Off: threshold gap 13.6%" in tuesday_intervals_text(g), tuesday_intervals_text(g)
+    shot(g, "m5-w5-tue-gap-too-big")
+    g.goto(BASE + "?date=2027-01-05")
+    assert g.get_by_role("heading", name="Drift retest").is_visible()
+    shot(g, "m5-w8-tue-retest")
+
     bad = new_page(CORRUPT)
     bad.goto(BASE + "?date=2026-11-16")
     shot(bad, "log-corrupt-data")

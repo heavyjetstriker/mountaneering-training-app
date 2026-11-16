@@ -17,6 +17,7 @@ export function LogFrame({
   onDiscard,
   onDelete,
   children,
+  words = LOG_WORDS,
 }: {
   title: string;
   date: string;
@@ -26,6 +27,8 @@ export function LogFrame({
   onDiscard: () => void;
   onDelete: () => void;
   children: ReactNode;
+  /** Button and dialog wording; the test result form uses its own. */
+  words?: FrameWords;
 }) {
   const [dialog, setDialog] = useState<'discard' | 'delete' | null>(null);
   const cancelRef = useRef<() => void>(() => {});
@@ -74,7 +77,7 @@ export function LogFrame({
         {canDelete && (
           <div>
             <button className="btn-invisible btn-invisible--danger" onClick={() => setDialog('delete')}>
-              Delete log
+              {words.delete}
             </button>
           </div>
         )}
@@ -82,13 +85,13 @@ export function LogFrame({
 
       <div className="save-bar">
         <button className="btn btn-primary btn-block" onClick={onSave}>
-          Save log
+          {words.save}
         </button>
       </div>
 
       {dialog === 'discard' && (
         <Dialog
-          title="Discard this log?"
+          title={words.discardTitle}
           onClose={() => setDialog(null)}
           footer={
             <>
@@ -106,7 +109,7 @@ export function LogFrame({
       )}
       {dialog === 'delete' && (
         <Dialog
-          title="Delete this log?"
+          title={words.deleteTitle}
           onClose={() => setDialog(null)}
           footer={
             <>
@@ -119,12 +122,28 @@ export function LogFrame({
             </>
           }
         >
-          <p className="box-row text-muted">The session goes back to not logged.</p>
+          <p className="box-row text-muted">{words.deleteBody}</p>
         </Dialog>
       )}
     </section>
   );
 }
+
+export interface FrameWords {
+  save: string;
+  delete: string;
+  discardTitle: string;
+  deleteTitle: string;
+  deleteBody: string;
+}
+
+const LOG_WORDS: FrameWords = {
+  save: 'Save log',
+  delete: 'Delete log',
+  discardTitle: 'Discard this log?',
+  deleteTitle: 'Delete this log?',
+  deleteBody: 'The session goes back to not logged.',
+};
 
 /** '82,5' or '82.5' → 82.5; empty or not a number → null. */
 export function parseNumber(text: string): number | null {

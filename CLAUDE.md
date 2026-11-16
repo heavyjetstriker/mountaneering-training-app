@@ -31,6 +31,11 @@ starting a milestone; this file only holds the rules that must never be broken.
   replaces everything (no merge), only after a confirm, and first copies the old data to
   `mta.data.backup-<timestamp>` (latest copy only). Bad, foreign or newer files change nothing.
   If AppData ever gets version 2, add a migration and keep reading version 1 backups.
+- **Test results drive the intervals switch** (src/tests.ts, pure and tested): drift < 5% sets the
+  aerobic threshold (starting HR); gap = (threshold HR − aerobic threshold) / threshold HR, on at 10% or
+  less. A week is laid out with `contextForWeek` (results dated before that week's Tuesday), so later
+  results never rewrite earlier weeks. Every caller of slotsFor / sessionsFor / resolveSession passes
+  that context (use `useWeekContext`); `ctx` is required on purpose. A logged week 8 retest stays put.
 - **Offline-first PWA** (vite-plugin-pwa, registerType 'prompt'): a new version only reloads when I
   tap Reload, never on the log screen. Device-only info (last export) lives in `mta.meta`.
 - Keep it simple: React + plain CSS, no state library, no router, no new dependencies without a reason.

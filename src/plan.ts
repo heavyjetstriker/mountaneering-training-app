@@ -146,12 +146,21 @@ export function getWeek(plan: Plan, week: number): PlanWeek {
   return w;
 }
 
+/** Rule 4: whether Tuesday intervals are on, and why not. Worked out in src/tests.ts. */
+export type IntervalsStatus =
+  | { on: true; gap: number }
+  | { on: false; reason: 'noDrift' | 'noThreshold'; gap?: undefined }
+  | { on: false; reason: 'gapTooBig'; gap: number };
+
+/** What the plan needs from my test results to lay out a week (src/tests.ts contextForWeek). */
 export interface Context {
-  /** From the Tests tab (milestone 5). Off until a threshold result exists. */
-  intervalsAllowed: boolean;
+  intervals: IntervalsStatus;
+  /** A drift retest was already logged that week: keep it even if intervals have come on since. */
+  keepRetest?: boolean;
 }
 
-export const DEFAULT_CONTEXT: Context = { intervalsAllowed: false };
+/** No test results: intervals off. Used by tests and anything that doesn't depend on results. */
+export const DEFAULT_CONTEXT: Context = { intervals: { on: false, reason: 'noThreshold' } };
 
 /** A session on a day, and the day the plan put it on (moves keep the original day's rules). */
 export interface Slot {
@@ -164,13 +173,13 @@ export interface Slot {
  * moved days applied. A moved day's sessions stack after the target day's own; a day
  * left empty becomes a rest day.
  */
-export function slotsFor(plan: Plan, week: number, ctx: Context = DEFAULT_CONTEXT): Record<Day, Slot[]> {
+export function slotsFor(plan: Plan, week: number, ctx: Context): Record<Day, Slot[]> {
   const w = getWeek(plan, week);
   const days = {} as Record<Day, Slot[]>;
   for (const d of DAY_ORDER) {
     // Week 8: the drift retest only happens if intervals are still off.
     days[d] = (w.dayChanges?.[d] ?? plan.weekly[d]).map((t) => ({
-      type: t === 'testDriftRetest' && ctx.intervalsAllowed ? 'zone2Long' : t,
+      type: t === 'testDriftRetest' && ctx.intervals.on && !ctx.keepRetest ? 'zone2Long' : t,
       from: d,
     }));
   }
@@ -185,12 +194,12 @@ export function slotsFor(plan: Plan, week: number, ctx: Context = DEFAULT_CONTEX
   return days;
 }
 
-export function sessionTypesFor(plan: Plan, week: number, day: Day, ctx: Context = DEFAULT_CONTEXT): SessionType[] {
+export function sessionTypesFor(plan: Plan, week: number, day: Day, ctx: Context): SessionType[] {
   return slotsFor(plan, week, ctx)[day].map((s) => s.type);
 }
 
 /** The day the plan originally put this session on. */
-export function originDay(plan: Plan, week: number, day: Day, type: SessionType, ctx: Context = DEFAULT_CONTEXT): Day {
+export function originDay(plan: Plan, week: number, day: Day, type: SessionType, ctx: Context): Day {
   return slotsFor(plan, week, ctx)[day].find((s) => s.type === type)?.from ?? day;
 }
 
@@ -293,6 +302,10 @@ export interface ResolvedSession {
   intervals?: number;
   /** Shown when intervals are planned this week but not unlocked yet. */
   intervalsLocked?: number;
+  /** Why they're off (with intervalsLocked). */
+  intervalsOff?: Extract<IntervalsStatus, { on: false }>;
+  /** How to run them (with intervals). */
+  intervalsHow?: string;
   /** Plain-text target for sessions without exercises (hike, recovery, me, tests). */
   target?: string;
   instructions?: string;
@@ -304,7 +317,7 @@ export function resolveSession(
   week: number,
   day: Day,
   type: SessionType,
-  ctx: Context = DEFAULT_CONTEXT,
+  ctx: Context,
 ): ResolvedSession {
   const w = getWeek(plan, week);
   const tpl = plan.templates[type];
@@ -320,8 +333,13 @@ export function resolveSession(
     out.cardio = { ...tpl.cardio, minutes: adjustMinutes(tpl.cardio.minutes, adjustment) };
   }
   if (type === 'zone2Long' && w.intervals && w.kind !== 'lighter') {
-    if (ctx.intervalsAllowed) out.intervals = w.intervals;
-    else out.intervalsLocked = w.intervals;
+    if (ctx.intervals.on) {
+      out.intervals = w.intervals;
+      if (tpl.intervalsHow) out.intervalsHow = tpl.intervalsHow;
+    } else {
+      out.intervalsLocked = w.intervals;
+      out.intervalsOff = ctx.intervals;
+    }
   }
   if (type === 'me') out.target = w.meVolume;
   if (type === 'longHike') out.target = `${w.longHike.hours} with a ${w.longHike.packKg} pack`;
@@ -340,14 +358,15 @@ export function resolveSwap(
   day: Day,
   type: SessionType,
   swapId: string,
+  ctx: Context,
 ): ResolvedExercise | null {
   const ex = plan.exerciseLibrary.find((e) => e.id === swapId);
   if (!ex) return null;
   const w = getWeek(plan, week);
-  return finishExercise(plan, w, type, adjustmentFor(w, type, originDay(plan, week, day, type)), ex, swapId);
+  return finishExercise(plan, w, type, adjustmentFor(w, type, originDay(plan, week, day, type, ctx)), ex, swapId);
 }
 
-export function sessionsFor(plan: Plan, week: number, day: Day, ctx: Context = DEFAULT_CONTEXT): ResolvedSession[] {
+export function sessionsFor(plan: Plan, week: number, day: Day, ctx: Context): ResolvedSession[] {
   return sessionTypesFor(plan, week, day, ctx).map((t) => resolveSession(plan, week, day, t, ctx));
 }
 
