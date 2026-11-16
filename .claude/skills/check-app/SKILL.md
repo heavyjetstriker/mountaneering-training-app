@@ -47,3 +47,8 @@ Report what you checked and anything that still looks off.
    in the Week view), week 8 without the retest, the week 12 vertical compared with week 1, delete
    from history, and the import dialog's Test results row. A second seed with a 13.6% gap shows
    week 5 intervals off and the week 8 drift retest.
+10. Trips and gear (milestone 6): the `m6-*` shots run on an empty seed: Trips empty, the trip form
+    (pack prefilled from the week), Planned with the Route link (href, target and rel asserted), form
+    errors including a `javascript:` link, the route on the 21 Nov hike card, "Plan a route" on 28 Nov,
+    Date passed → Mark done → Done totals, delete confirm, Gear empty → starter list → ticked and
+    edited, and the import dialog's Trips and Gear items rows.

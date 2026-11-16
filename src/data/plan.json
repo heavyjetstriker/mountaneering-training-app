@@ -182,5 +182,12 @@
   "reminders": {
     "everySession": "10 min warm-up before every session.",
     "everyDay": "10 min mobility every day: hip flexors, calves, hamstrings, upper back."
-  }
+  },
+  "starterGear": [
+    "Hiking boots",
+    "Trekking pack",
+    "Trekking poles",
+    "Heart-rate chest strap",
+    "Water bottles for the loaded carry"
+  ]
 }

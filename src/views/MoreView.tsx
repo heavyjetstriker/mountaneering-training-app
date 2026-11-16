@@ -11,6 +11,7 @@ import { Dialog } from '../components/Dialog';
 import { Segmented } from '../components/Segmented';
 import { BackupBox } from '../components/BackupBox';
 import { SettingsBox } from '../components/SettingsBox';
+import { GearBox } from '../components/GearBox';
 
 function PausePlan({ plan, today }: { plan: Plan; today: string }) {
   const { notify } = useLogActions();
@@ -158,11 +159,11 @@ export function MoreView({ basePlan, plan, today }: { basePlan: Plan; plan: Plan
         <h1 className="page-title">More</h1>
       </header>
       <div className="stack">
+        <GearBox plan={plan} />
         <PlanChanges basePlan={basePlan} />
         <PausePlan plan={plan} today={today} />
         <SettingsBox basePlan={basePlan} plan={plan} />
         <BackupBox today={today} />
-        <p className="text-muted text-small">The gear checklist arrives in milestone 6.</p>
       </div>
     </section>
   );

@@ -36,6 +36,9 @@ starting a milestone; this file only holds the rules that must never be broken.
   less. A week is laid out with `contextForWeek` (results dated before that week's Tuesday), so later
   results never rewrite earlier weeks. Every caller of slotsFor / sessionsFor / resolveSession passes
   that context (use `useWeekContext`); `ctx` is required on purpose. A logged week 8 retest stays put.
+- **Trips and gear** (src/trips.ts, src/gear.ts, pure and tested) live in `mta.data.trips` / `.gear`.
+  Route links are http(s) only (schema-checked, also on import) and open with `rel="noopener noreferrer"`.
+  The gear starter list is `starterGear` in plan.json, not hard-coded.
 - **Offline-first PWA** (vite-plugin-pwa, registerType 'prompt'): a new version only reloads when I
   tap Reload, never on the log screen. Device-only info (last export) lives in `mta.meta`.
 - Keep it simple: React + plain CSS, no state library, no router, no new dependencies without a reason.

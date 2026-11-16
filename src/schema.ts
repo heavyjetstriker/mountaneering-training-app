@@ -71,6 +71,8 @@ export const PlanSchema = z
     exerciseLibrary: z.array(ExerciseSchema),
     weeks: z.array(PlanWeekSchema).length(12),
     reminders: z.object({ everySession: z.string(), everyDay: z.string() }),
+    /** Gear the training plan names, offered when the gear list is empty. */
+    starterGear: z.array(z.string().min(1)).optional(),
   })
   .superRefine((plan, ctx) => {
     // Every session type must have a template.

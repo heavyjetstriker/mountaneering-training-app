@@ -123,6 +123,53 @@ export const TestResultSchema = z.discriminatedUnion('type', [
 export type TestResult = z.infer<typeof TestResultSchema>;
 export type TestType = TestResult['type'];
 
+// ---------- trips and gear (milestone 6) ----------
+
+/** Only http and https links, so a stored link can never run script when opened. */
+export const WebLink = z
+  .string()
+  .max(2000)
+  .refine((s) => {
+    try {
+      const u = new URL(s);
+      return (u.protocol === 'https:' || u.protocol === 'http:') && !!u.hostname;
+    } catch {
+      return false;
+    }
+  }, 'expected an http or https link');
+
+const oneDecimal = (n: number) => Math.round(n * 10) / 10 === n;
+
+export const AREAS = ['Sintra', 'Arrábida', 'Monsanto', 'Jamor', 'Other'] as const;
+export const TRANSPORTS = ['train+bus', 'car'] as const;
+
+export const TripSchema = z.object({
+  id: z.string().min(1),
+  savedAt: z.string(),
+  date: ISODate.refine(isValidISO, 'not a real date'),
+  route: z.string().trim().min(1).max(120),
+  area: z.enum(AREAS),
+  transport: z.enum(TRANSPORTS),
+  distanceKm: z.number().min(0.1).max(100).refine(oneDecimal).optional(),
+  climbM: z.number().int().min(0).max(5000).optional(),
+  packKg: z.number().min(0).max(40).refine(oneDecimal).optional(),
+  link: WebLink.optional(),
+  status: z.enum(['planned', 'done']),
+  note: z.string().optional(),
+});
+export type Trip = z.infer<typeof TripSchema>;
+export type Area = Trip['area'];
+export type Transport = Trip['transport'];
+
+export const GearItemSchema = z.object({
+  id: z.string().min(1),
+  savedAt: z.string(),
+  name: z.string().trim().min(1).max(60),
+  status: z.enum(['need', 'have']),
+  note: z.string().optional(),
+});
+export type GearItem = z.infer<typeof GearItemSchema>;
+
 /** The newest AppData version this build understands. */
 export const APP_DATA_VERSION = 1;
 
@@ -132,8 +179,8 @@ export const AppDataSchema = z.object({
   // Added now as empty arrays so later milestones don't need a migration.
   overrides: z.array(OverrideRecordSchema),
   tests: z.array(TestResultSchema),
-  trips: z.array(z.unknown()), // milestone 6
-  gear: z.array(z.unknown()), // milestone 6
+  trips: z.array(TripSchema),
+  gear: z.array(GearItemSchema),
 });
 export type AppData = z.infer<typeof AppDataSchema>;
 

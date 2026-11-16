@@ -46,9 +46,11 @@ function whenText(iso: string): string {
   return `${shortDate(localISO(d))}, ${hm}`;
 }
 
-function contentsText(s: Pick<Summary, 'logs' | 'changes' | 'tests'>): string {
+function contentsText(s: Pick<Summary, 'logs' | 'changes' | 'tests' | 'trips' | 'gear'>): string {
   const parts = [plural(s.logs, 'log'), plural(s.changes, 'plan change')];
   if (s.tests) parts.push(plural(s.tests, 'test result'));
+  if (s.trips) parts.push(plural(s.trips, 'trip'));
+  if (s.gear) parts.push(plural(s.gear, 'gear item'));
   return `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}`;
 }
 
@@ -111,6 +113,16 @@ function ImportDialog({ file, onCancel, onDone }: { file: BackupFile; onCancel: 
             <th scope="row">Test results</th>
             <td>{incoming.tests}</td>
             <td>{here.tests}</td>
+          </tr>
+          <tr className="box-row">
+            <th scope="row">Trips</th>
+            <td>{incoming.trips}</td>
+            <td>{here.trips}</td>
+          </tr>
+          <tr className="box-row">
+            <th scope="row">Gear items</th>
+            <td>{incoming.gear}</td>
+            <td>{here.gear}</td>
           </tr>
           <tr className="box-row">
             <th scope="row">Newest log</th>
@@ -196,7 +208,7 @@ export function BackupBox({ today }: { today: string }) {
         <h2 className="box-title">Backup</h2>
       </header>
       <p className="box-row box-row--note">
-        All your logs, plan changes and test results in one file. Export it to keep a copy, or to move to your PC and import it there.
+        All your logs, plan changes, test results, trips and gear in one file. Export it to keep a copy, or to move to your PC and import it there.
       </p>
       {error && (
         <div className="box-row box-row--flash">

@@ -11,12 +11,13 @@ import type { Plan } from './schema';
 import { isValidISO, localISO, shortDate } from './dates';
 import { TodayView } from './views/TodayView';
 import { WeekView } from './views/WeekView';
-import { Placeholder } from './views/Placeholder';
 import { TestsView } from './views/TestsView';
 import { TestForm } from './views/TestForm';
+import { TripsView } from './views/TripsView';
+import { TripForm } from './views/TripForm';
 import { StrengthLog } from './views/StrengthLog';
 import { CardioLog } from './views/CardioLog';
-import { LogActionsContext, type LogActions, type LogTarget, type TestFormTarget } from './logContext';
+import { LogActionsContext, type LogActions, type LogTarget, type TestFormTarget, type TripFormTarget } from './logContext';
 import { logKind } from './logs';
 import { getStore, useStore } from './store';
 import { buildEffectivePlan } from './plan';
@@ -72,8 +73,10 @@ export function App({ plan: basePlan }: { plan: Plan }) {
   // The log screen opens full-screen over the current tab; the tab stays mounted underneath.
   const [logging, setLogging] = useState<LogTarget | null>(null);
   const [testing, setTesting] = useState<TestFormTarget | null>(null);
+  const [tripping, setTripping] = useState<TripFormTarget | null>(null);
+  const fullScreen = !!logging || !!testing || !!tripping;
   // Which full-screen form is open (refs, so the actions below never see stale state).
-  const open = useRef<'log' | 'test' | null>(null);
+  const open = useRef<'log' | 'test' | 'trip' | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const scrollY = useRef(0);
   const actions = useMemo<LogActions>(
@@ -90,6 +93,13 @@ export function App({ plan: basePlan }: { plan: Plan }) {
         open.current = 'test';
         setNotice(null);
         setTesting(target);
+        window.scrollTo(0, 0);
+      },
+      openTripForm(target) {
+        if (!open.current) scrollY.current = window.scrollY;
+        open.current = 'trip';
+        setNotice(null);
+        setTripping(target);
         window.scrollTo(0, 0);
       },
       openTests() {
@@ -114,6 +124,7 @@ export function App({ plan: basePlan }: { plan: Plan }) {
     open.current = null;
     setLogging(null);
     setTesting(null);
+    setTripping(null);
     if (saved) setNotice(saved);
     // A form opened straight from this one (log → results) keeps its own scroll.
     requestAnimationFrame(() => {
@@ -141,6 +152,18 @@ export function App({ plan: basePlan }: { plan: Plan }) {
             Previewing {shortDate(preview)}. <a href={window.location.pathname}>Back to today</a>
           </div>
         )}
+        {tripping && (
+          <main className="screen screen--log">
+            {saveFlash && <div className="notices">{saveFlash}</div>}
+            <TripForm
+              key={`${tripping.date}-${tripping.editId ?? 'new'}`}
+              plan={plan}
+              today={today}
+              target={tripping}
+              onClose={closeForm}
+            />
+          </main>
+        )}
         {testing && (
           <main className="screen screen--log">
             {saveFlash && <div className="notices">{saveFlash}</div>}
@@ -157,7 +180,7 @@ export function App({ plan: basePlan }: { plan: Plan }) {
             )}
           </main>
         )}
-        <main className="screen" hidden={!!logging || !!testing}>
+        <main className="screen" hidden={fullScreen}>
           {(saveFlash || notice || update.ready || (corruptCopyKey && tab === 'today')) && (
             <div className="notices">
               {saveFlash}
@@ -184,12 +207,10 @@ export function App({ plan: basePlan }: { plan: Plan }) {
           {tab === 'today' && <TodayView plan={plan} today={today} />}
           {tab === 'week' && <WeekView plan={plan} today={today} />}
           {tab === 'tests' && <TestsView today={today} />}
-          {tab === 'trips' && (
-            <Placeholder title="Trips" text="Planned and done hikes, with route links, arrive in milestone 6." />
-          )}
+          {tab === 'trips' && <TripsView today={today} />}
           {tab === 'more' && <MoreView basePlan={basePlan} plan={plan} today={today} />}
         </main>
-        {!logging && !testing && (
+        {!fullScreen && (
           <nav className="tabbar" aria-label="Sections">
             {TABS.map((t) => (
               <button

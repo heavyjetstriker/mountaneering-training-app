@@ -7,6 +7,7 @@ import { useAppData } from '../store';
 import { SessionCard } from './SessionCard';
 import { SessionFooter } from './SessionFooter';
 import { TestResultsRows } from './TestResultsRows';
+import { TripRows } from './TripRows';
 import { ExerciseEditor } from './ExerciseEditor';
 import { MoveDayDialog } from './MoveDayDialog';
 
@@ -58,6 +59,7 @@ export function DaySessions({
             onEditExercise={(ex) => setEditing({ type: s.type, ex })}
             footer={
               <>
+                <TripRows session={s} date={date} today={today} />
                 <TestResultsRows session={s} date={date} today={today} week={week} day={day} />
                 <SessionFooter session={s} date={date} today={today} week={week} day={day} />
               </>

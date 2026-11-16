@@ -508,3 +508,54 @@ del { text-decoration-thickness: 1px; }
 .intervals-off { display: grid; gap: var(--base-size-4); }
 .test-results { display: grid; gap: var(--base-size-4); padding-top: var(--base-size-12); padding-bottom: var(--base-size-12); }
 .test-result-line { display: flex; align-items: center; justify-content: space-between; gap: var(--base-size-8); }
+
+/* ---------- milestone 6: trips and gear ---------- */
+.trip-row { align-items: center; gap: var(--base-size-8); padding-top: var(--base-size-8); padding-bottom: var(--base-size-8); }
+.trip-main {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: var(--base-size-2);
+  min-height: var(--control-minTarget-coarse);
+  padding: var(--base-size-4) 0;
+  background: none;
+  border: 0;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.trip-route { overflow-wrap: anywhere; }
+.trip-actions { flex: none; display: flex; flex-direction: column; align-items: stretch; gap: var(--base-size-8); }
+.trip-label { margin-left: var(--base-size-8); }
+.btn-route { gap: var(--base-size-4); text-decoration: none; }
+.trip-plan { padding-top: 0; padding-bottom: 0; }
+
+.gear-row { gap: var(--base-size-4); padding-top: 0; padding-bottom: 0; }
+.gear-check {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--control-minTarget-coarse);
+  height: var(--control-minTarget-coarse);
+  margin-left: calc(var(--base-size-12) * -1);
+  cursor: pointer;
+}
+.gear-check input { width: var(--base-size-20); height: var(--base-size-20); accent-color: var(--fgColor-success); cursor: pointer; }
+.gear-name {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  min-height: var(--control-minTarget-coarse);
+  align-content: center;
+  padding: var(--base-size-4) 0;
+  background: none;
+  border: 0;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.gear-name--have > span:first-child { color: var(--fgColor-muted); }
+.gear-add { gap: var(--base-size-8); padding-top: var(--base-size-12); padding-bottom: var(--base-size-12); }
+.gear-empty { flex-wrap: wrap; justify-content: space-between; gap: var(--base-size-8); padding-top: var(--base-size-12); padding-bottom: var(--base-size-12); }
+.spacer { flex: 1; }

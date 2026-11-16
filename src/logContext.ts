@@ -21,6 +21,13 @@ export interface TestFormTarget {
   editId?: string;
 }
 
+/** The trip form: a new trip on a date (fixed when opened from a hike card), or one to edit. */
+export interface TripFormTarget {
+  date: string;
+  editId?: string;
+  fixedDate?: boolean;
+}
+
 export interface LogActions {
   openLog(target: LogTarget): void;
   /** Short success Flash at the top of the screen. */
@@ -29,6 +36,7 @@ export interface LogActions {
   openMore(section?: 'backup' | 'settings'): void;
   openTestForm(target: TestFormTarget): void;
   openTests(): void;
+  openTripForm(target: TripFormTarget): void;
 }
 
 export const LogActionsContext = createContext<LogActions>({
@@ -37,6 +45,7 @@ export const LogActionsContext = createContext<LogActions>({
   openMore: () => {},
   openTestForm: () => {},
   openTests: () => {},
+  openTripForm: () => {},
 });
 
 export function useLogActions(): LogActions {

@@ -77,8 +77,8 @@ describe('parseBackup', () => {
 
 describe('summarize and importWarnings', () => {
   it('summarizes logs, changes and the newest log date', () => {
-    expect(summarize(sample)).toEqual({ logs: 2, changes: 1, tests: 0, newestLog: '2026-11-19' });
-    expect(summarize(emptyAppData())).toEqual({ logs: 0, changes: 0, tests: 0, newestLog: null });
+    expect(summarize(sample)).toEqual({ logs: 2, changes: 1, tests: 0, trips: 0, gear: 0, newestLog: '2026-11-19' });
+    expect(summarize(emptyAppData())).toEqual({ logs: 0, changes: 0, tests: 0, trips: 0, gear: 0, newestLog: null });
   });
   it('gives no warning for the same data, or a newer file', () => {
     expect(importWarnings(sample, sample)).toEqual([]);
