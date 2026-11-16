@@ -1,9 +1,11 @@
 import { useState } from 'react';
+import { ChevronLeftIcon, ChevronRightIcon } from '@primer/octicons-react';
 import type { Day, Plan } from '../schema';
 import { DAY_NAMES, DAY_ORDER, shortDate } from '../dates';
-import { blockLabel, dateOf, getWeek, positionOn, sessionTypesFor, TOTAL_WEEKS } from '../plan';
-import { Blazes } from '../components/Blazes';
+import { dateOf, getWeek, positionOn, sessionTypesFor, TOTAL_WEEKS } from '../plan';
+import { DayHeader } from '../components/DayHeader';
 import { DaySessions } from '../components/DaySessions';
+import { WeekProgress } from '../components/WeekProgress';
 
 function initialWeek(plan: Plan, today: string): number {
   const pos = positionOn(plan, today);
@@ -21,19 +23,10 @@ export function WeekView({ plan, today }: { plan: Plan; today: string }) {
   if (openDay) {
     return (
       <section>
-        <button className="back" onClick={() => setOpenDay(null)}>
-          Back to week {week}
+        <button className="btn-invisible back" onClick={() => setOpenDay(null)}>
+          <ChevronLeftIcon /> Week {week}
         </button>
-        <header className="today-head">
-          <p className="week-line">
-            <span>
-              Week {week} of {TOTAL_WEEKS}
-            </span>
-            <span>{blockLabel(w)}</span>
-          </p>
-          <h1 className="day-name">{DAY_NAMES[openDay]}</h1>
-          <p className="date-line">{shortDate(dateOf(plan, week, openDay))}</p>
-        </header>
+        <DayHeader title={`${DAY_NAMES[openDay]}, ${shortDate(dateOf(plan, week, openDay))}`} week={w} />
         <DaySessions plan={plan} week={week} day={openDay} />
       </section>
     );
@@ -41,53 +34,56 @@ export function WeekView({ plan, today }: { plan: Plan; today: string }) {
 
   return (
     <section>
-      <header className="week-head">
-        <button className="step" onClick={() => setWeek(week - 1)} disabled={week === 1} aria-label="Previous week">
-          ‹
-        </button>
-        <div className="week-head-title">
-          <h1 className="screen-title">Week {week}</h1>
-          <p className="muted">
-            {shortDate(dateOf(plan, week, 'mon'))} to {shortDate(dateOf(plan, week, 'sun'))}
-          </p>
-          <p className="muted">{blockLabel(w)}</p>
+      <header className="page-head">
+        <div className="week-nav">
+          <button className="btn btn-icon" onClick={() => setWeek(week - 1)} disabled={week === 1} aria-label="Previous week">
+            <ChevronLeftIcon />
+          </button>
+          <div className="week-nav-title">
+            <h1 className="page-title">Week {week}</h1>
+            <span className="text-muted text-small">
+              {shortDate(dateOf(plan, week, 'mon'))} to {shortDate(dateOf(plan, week, 'sun'))}
+            </span>
+          </div>
+          <button
+            className="btn btn-icon"
+            onClick={() => setWeek(week + 1)}
+            disabled={week === TOTAL_WEEKS}
+            aria-label="Next week"
+          >
+            <ChevronRightIcon />
+          </button>
         </div>
-        <button
-          className="step"
-          onClick={() => setWeek(week + 1)}
-          disabled={week === TOTAL_WEEKS}
-          aria-label="Next week"
-        >
-          ›
-        </button>
+        <WeekProgress week={week} />
+        {w.notes && <p className="text-muted">{w.notes}</p>}
       </header>
-      <Blazes current={week} onPick={setWeek} />
-      {w.notes && <p className="week-note">{w.notes}</p>}
 
-      <ol className="days">
+      <ul className="box">
         {DAY_ORDER.map((d) => {
           const date = dateOf(plan, week, d);
           const titles = sessionTypesFor(plan, week, d).map((t) => plan.templates[t].title);
-          const rest = d === 'fri';
+          const isToday = date === today;
           return (
             <li key={d}>
               <button
-                className={`day-row${date === today ? ' day-row--today' : ''}${rest ? ' day-row--rest' : ''}`}
+                className={`box-row day-row${d === 'fri' ? ' text-muted' : ''}`}
                 onClick={() => {
                   setOpenDay(d);
                   window.scrollTo(0, 0);
                 }}
               >
                 <span className="day-row-when">
-                  <b>{DAY_NAMES[d].slice(0, 3)}</b>
-                  <span>{shortDate(date)}</span>
+                  <span className="day-row-day">{DAY_NAMES[d].slice(0, 3)}</span>
+                  <span className="text-muted text-small">{shortDate(date)}</span>
                 </span>
                 <span className="day-row-what">{titles.join(', then ')}</span>
+                {isToday && <span className="label label--accent">Today</span>}
+                <ChevronRightIcon className="text-muted" />
               </button>
             </li>
           );
         })}
-      </ol>
+      </ul>
     </section>
   );
 }

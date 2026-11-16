@@ -22,9 +22,21 @@ starting a milestone; this file only holds the rules that must never be broken.
 - **User changes are overrides layered on plan.json**, never edits to it. Logs store names and
   numbers as they were on the day, so plan edits never rewrite history.
 - Keep it simple: React + plain CSS, no state library, no router, no new dependencies without a reason.
-- UI: phone-first, dark, tap targets of at least 3.5rem, usable mid-set. On a PC it is the same
-  phone-width column, centred. Colours and type are the tokens at the top of src/styles.css.
 - App text is English, sentence case, plain words.
+
+## UI: clean and GitHub-like, never "vibe-coded"
+
+- Built on GitHub's own design tokens (`@primer/primitives`, dark theme) and icons
+  (`@primer/octicons-react`), font Mona Sans. In CSS use only Primer variables
+  (`--fgColor-*`, `--bgColor-*`, `--borderColor-*`, `--base-size-*`, `--borderRadius-*`).
+  No raw hex colours, no one-off sizes.
+- One container pattern: the bordered **box** with a muted header row and divided rows
+  (src/styles.css). No cards inside cards, no shadows, no gradients, no glow, no blur.
+- Colour means something or isn't used: accent blue = today and links, attention yellow =
+  lighter/test week, green = progress, coral = active tab. Everything else is neutral grey.
+- Use Primer patterns before inventing: Label, Flash, Button, invisible button, blankslate.
+- No emojis as icons, no decorative status dots, no animated entrances, no big hero numbers.
+- Phone-first, tap targets at least 44–48px (usable mid-set). On a PC it is the same column, centred.
 
 ## Before saying a milestone is done
 

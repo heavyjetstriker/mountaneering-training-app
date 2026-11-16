@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { BeakerIcon, CalendarIcon, KebabHorizontalIcon, LocationIcon, SunIcon, type Icon } from '@primer/octicons-react';
 import type { Plan } from './schema';
 import { isValidISO, localISO, shortDate } from './dates';
 import { TodayView } from './views/TodayView';
@@ -7,12 +8,12 @@ import { Placeholder } from './views/Placeholder';
 
 type Tab = 'today' | 'week' | 'tests' | 'trips' | 'more';
 
-const TABS: { id: Tab; label: string }[] = [
-  { id: 'today', label: 'Today' },
-  { id: 'week', label: 'Week' },
-  { id: 'tests', label: 'Tests' },
-  { id: 'trips', label: 'Trips' },
-  { id: 'more', label: 'More' },
+const TABS: { id: Tab; label: string; Icon: Icon }[] = [
+  { id: 'today', label: 'Today', Icon: SunIcon },
+  { id: 'week', label: 'Week', Icon: CalendarIcon },
+  { id: 'tests', label: 'Tests', Icon: BeakerIcon },
+  { id: 'trips', label: 'Trips', Icon: LocationIcon },
+  { id: 'more', label: 'More', Icon: KebabHorizontalIcon },
 ];
 
 /** ?date=YYYY-MM-DD lets me preview any day of the plan. */
@@ -74,7 +75,8 @@ export function App({ plan }: { plan: Plan }) {
               window.scrollTo(0, 0);
             }}
           >
-            {t.label}
+            <t.Icon size={20} />
+            <span>{t.label}</span>
           </button>
         ))}
       </nav>

@@ -1,10 +1,14 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import '@fontsource/barlow/400.css';
-import '@fontsource/barlow/500.css';
-import '@fontsource/barlow/600.css';
-import '@fontsource/barlow-condensed/600.css';
-import '@fontsource/barlow-condensed/700.css';
+import '@fontsource-variable/mona-sans';
+// GitHub's Primer design tokens: colours, type, sizes. Styles use these only.
+import '@primer/primitives/dist/css/base/typography/typography.css';
+import '@primer/primitives/dist/css/functional/typography/typography.css';
+import '@primer/primitives/dist/css/base/size/size.css';
+import '@primer/primitives/dist/css/functional/size/size.css';
+import '@primer/primitives/dist/css/functional/size/radius.css';
+import '@primer/primitives/dist/css/functional/size/border.css';
+import '@primer/primitives/dist/css/functional/themes/dark.css';
 import './styles.css';
 import rawPlan from './data/plan.json';
 import { parsePlan, type Plan } from './schema';

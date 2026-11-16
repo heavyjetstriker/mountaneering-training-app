@@ -11,27 +11,31 @@ function minutes([lo, hi]: [number, number]): string {
   return lo === hi ? `${lo} min` : `${lo}–${hi} min`;
 }
 
+/** One session as a GitHub-style box: header row, then list rows. */
 export function SessionCard({ session, week }: { session: ResolvedSession; week: PlanWeek }) {
   const s = session;
   return (
-    <article className={`session session--${s.type}`}>
-      <h2 className="session-title">{s.title}</h2>
+    <article className="box">
+      <header className="box-header">
+        <h2 className="box-title">{s.title}</h2>
+        {s.cardio && <span className="box-meta">{minutes(s.cardio.minutes)}</span>}
+      </header>
 
       {s.exercises && (
         <>
-          <p className="session-hint">{BLOCK_HINT[week.block]}</p>
-          <ul className="exercises">
+          <p className="box-row box-row--note">{BLOCK_HINT[week.block]}</p>
+          <ul>
             {s.exercises.map((ex) => (
-              <li key={ex.id} className="exercise">
-                <div className="exercise-name">
-                  {ex.name}
-                  {ex.note && <span className="exercise-note">{ex.note}</span>}
+              <li key={ex.id} className="box-row exercise">
+                <div>
+                  <div className="exercise-name">{ex.name}</div>
+                  {ex.note && <div className="text-muted text-small">{ex.note}</div>}
                 </div>
-                <div className="exercise-dose" aria-label={`${ex.sets} sets of ${ex.reps}`}>
-                  {ex.sets !== ex.originalSets && <s className="was">{ex.originalSets}</s>}
-                  <b>{ex.sets}</b>
-                  <span className="times">×</span>
-                  <b>{ex.reps}</b>
+                <div className="dose" aria-label={`${ex.sets} sets of ${ex.reps}`}>
+                  {ex.sets !== ex.originalSets && <del className="text-muted">{ex.originalSets}</del>}
+                  <span>
+                    {ex.sets} × {ex.reps}
+                  </span>
                 </div>
               </li>
             ))}
@@ -40,28 +44,34 @@ export function SessionCard({ session, week }: { session: ResolvedSession; week:
       )}
 
       {s.cardio && (
-        <div className="cardio">
-          <div className="big-figure">{minutes(s.cardio.minutes)}</div>
-          <p>
-            {s.title.toLowerCase().includes(s.cardio.where.toLowerCase())
-              ? `${s.cardio.zone}.`
-              : `${s.cardio.zone}: ${s.cardio.where.toLowerCase()}.`}
-          </p>
+        <dl className="facts">
+          <div className="box-row">
+            <dt>Effort</dt>
+            <dd>{s.cardio.zone}</dd>
+          </div>
+          <div className="box-row">
+            <dt>Where</dt>
+            <dd>{s.cardio.where}</dd>
+          </div>
           {s.intervals && (
-            <p className="intervals">
-              Include intervals: {s.intervals} × 4 min at Zone 4.
-            </p>
+            <div className="box-row">
+              <dt>Intervals</dt>
+              <dd>{s.intervals} × 4 min at Zone 4</dd>
+            </div>
           )}
           {s.intervalsLocked && (
-            <p className="muted">
-              Intervals ({s.intervalsLocked} × 4 min at Zone 4) are off until your tests show a threshold gap of 10% or less.
-            </p>
+            <div className="box-row">
+              <dt>Intervals</dt>
+              <dd className="text-muted">
+                Off. {s.intervalsLocked} × 4 min at Zone 4 once your tests show a threshold gap of 10% or less.
+              </dd>
+            </div>
           )}
-        </div>
+        </dl>
       )}
 
-      {s.target && <p className="target">{s.target}</p>}
-      {s.instructions && <p className="instructions">{s.instructions}</p>}
+      {s.target && <p className="box-row target">{s.target}</p>}
+      {s.instructions && <p className="box-row text-muted">{s.instructions}</p>}
     </article>
   );
 }
