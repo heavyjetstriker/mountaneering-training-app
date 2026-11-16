@@ -1,7 +1,7 @@
 // My plan changes: adding, resetting and describing override records. Pure functions only.
 import type { Exercise, Plan } from './schema';
 import type { AppData, OverrideRecord, OverrideScope, PlanOverride } from './logSchema';
-import { DAY_NAMES } from './dates';
+import { DAY_NAMES, longDate } from './dates';
 import { getWeek, isWeekOnly, sortOverrides } from './plan';
 
 export function addOverride(data: AppData, override: PlanOverride, id: string, createdAt: string): AppData {
@@ -11,6 +11,15 @@ export function addOverride(data: AppData, override: PlanOverride, id: string, c
 /** Resetting a change = deleting its override record. */
 export function removeOverride(data: AppData, id: string): AppData {
   return { ...data, overrides: data.overrides.filter((o) => o.id !== id) };
+}
+
+/**
+ * A new start date replaces any earlier start-date change, so the list shows one line.
+ * Picking the plan's own date just removes the change.
+ */
+export function setStartDate(data: AppData, plan: Plan, date: string, id: string, createdAt: string): AppData {
+  const rest = { ...data, overrides: data.overrides.filter((o) => o.override.kind !== 'startDate') };
+  return date === plan.startDate ? rest : addOverride(rest, { kind: 'startDate', date }, id, createdAt);
 }
 
 export function resetAllOverrides(data: AppData): AppData {
@@ -94,6 +103,15 @@ export function describeOverride(plan: Plan, record: OverrideRecord, all: Overri
     }
     case 'pause':
       return `Plan paused ${weeks(o.weeks)} from week ${o.fromWeek}`;
+    case 'startDate': {
+      // "Before" is the start date in force just before this change: an earlier one, or the plan's own.
+      let before = plan.startDate;
+      for (const r of sortOverrides(all)) {
+        if (r.id === record.id) break;
+        if (r.override.kind === 'startDate') before = r.override.date;
+      }
+      return `Plan start: ${longDate(before)} → ${longDate(o.date)}`;
+    }
   }
 }
 

@@ -27,6 +27,12 @@ starting a milestone; this file only holds the rules that must never be broken.
   src/logSchema.ts and written whole through `save()`. Unreadable data is never overwritten: it is
   copied to `mta.data.corrupt-<timestamp>`. Log logic is pure and tested in src/logs.ts.
   Half-filled strength logs are kept separately in `mta.drafts` (never exported).
+- **Backup is one JSON file** (src/backup.ts, pure and tested): `{ app, exportedAt, data }`. Import
+  replaces everything (no merge), only after a confirm, and first copies the old data to
+  `mta.data.backup-<timestamp>` (latest copy only). Bad, foreign or newer files change nothing.
+  If AppData ever gets version 2, add a migration and keep reading version 1 backups.
+- **Offline-first PWA** (vite-plugin-pwa, registerType 'prompt'): a new version only reloads when I
+  tap Reload, never on the log screen. Device-only info (last export) lives in `mta.meta`.
 - Keep it simple: React + plain CSS, no state library, no router, no new dependencies without a reason.
 - App text is English, sentence case, plain words.
 

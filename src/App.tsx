@@ -5,7 +5,6 @@ import {
   KebabHorizontalIcon,
   LocationIcon,
   SunIcon,
-  XIcon,
   type Icon,
 } from '@primer/octicons-react';
 import type { Plan } from './schema';
@@ -20,6 +19,8 @@ import { logKind } from './logs';
 import { getStore, useStore } from './store';
 import { buildEffectivePlan } from './plan';
 import { MoreView } from './views/MoreView';
+import { ensurePersisted, useAppUpdate } from './pwa';
+import { Flash } from './components/Flash';
 
 type Tab = 'today' | 'week' | 'tests' | 'trips' | 'more';
 
@@ -54,29 +55,10 @@ function useToday(): string {
 
 const NOTICE_MS = 4000;
 
-function Flash({
-  tone,
-  children,
-  onDismiss,
-}: {
-  tone: 'success' | 'danger';
-  children: string;
-  onDismiss?: () => void;
-}) {
-  return (
-    <div className={`flash flash--${tone}`} role={tone === 'danger' ? 'alert' : 'status'}>
-      <span>{children}</span>
-      {onDismiss && (
-        <button className="btn-invisible btn-icon flash-close" aria-label="Dismiss" onClick={onDismiss}>
-          <XIcon />
-        </button>
-      )}
-    </div>
-  );
-}
-
 export function App({ plan: basePlan }: { plan: Plan }) {
   const [tab, setTab] = useState<Tab>('today');
+  const update = useAppUpdate();
+  useEffect(ensurePersisted, []);
   const realToday = useToday();
   const preview = previewDate();
   const today = preview ?? realToday;
@@ -99,6 +81,14 @@ export function App({ plan: basePlan }: { plan: Plan }) {
       },
       notify(text) {
         setNotice(text);
+      },
+      openMore(section) {
+        setTab('more');
+        requestAnimationFrame(() => {
+          const el = section && document.getElementById(section);
+          if (el) el.scrollIntoView({ block: 'start' });
+          else window.scrollTo(0, 0);
+        });
       },
     }),
     [],
@@ -140,9 +130,21 @@ export function App({ plan: basePlan }: { plan: Plan }) {
           </main>
         )}
         <main className="screen" hidden={!!logging}>
-          {(saveFlash || notice || (corruptCopyKey && tab === 'today')) && (
+          {(saveFlash || notice || update.ready || (corruptCopyKey && tab === 'today')) && (
             <div className="notices">
               {saveFlash}
+              {update.ready && (
+                <Flash
+                  tone="neutral"
+                  action={
+                    <button className="btn flash-action" onClick={update.reload}>
+                      Reload
+                    </button>
+                  }
+                >
+                  A new version is ready.
+                </Flash>
+              )}
               {corruptCopyKey && tab === 'today' && (
                 <Flash tone="danger" onDismiss={() => getStore().dismissCorruptNotice()}>
                   Saved data couldn't be read, so the app started empty. A copy was kept for recovery.

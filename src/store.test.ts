@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createStore, memoryStorage, STORAGE_KEY, type StorageLike } from './store';
+import { BACKUP_COPY_PREFIX, createStore, memoryStorage, storageKeys, STORAGE_KEY, type StorageLike } from './store';
 import { emptyAppData, type SessionLog } from './logSchema';
 import { upsertLog } from './logs';
 
@@ -61,5 +61,41 @@ describe('store', () => {
     expect(store.getState().data.logs).toHaveLength(1);
     store.receiveExternal('garbage');
     expect(store.getState().data.logs).toHaveLength(1);
+  });
+
+  it('an import keeps a recovery copy of the old data, and only the latest one', () => {
+    const storage = memoryStorage();
+    let t = 1000;
+    const store = createStore(storage, () => t);
+    store.save(upsertLog(store.getState().data, aLog));
+    const before = storage.getItem(STORAGE_KEY);
+
+    const incoming = { ...emptyAppData(), logs: [{ ...aLog, id: 'b', date: '2026-11-17' }] };
+    expect(store.replaceAll(incoming)).toBe(true);
+    expect(store.getState().data).toEqual(incoming);
+    expect(storage.getItem(`${BACKUP_COPY_PREFIX}1000`)).toBe(before);
+    expect(createStore(storage).getState().data).toEqual(incoming);
+
+    t = 2000;
+    expect(store.replaceAll(emptyAppData())).toBe(true);
+    expect(storageKeys(storage).filter((k) => k.startsWith(BACKUP_COPY_PREFIX))).toEqual([`${BACKUP_COPY_PREFIX}2000`]);
+    expect(JSON.parse(storage.getItem(`${BACKUP_COPY_PREFIX}2000`)!)).toEqual(incoming);
+  });
+
+  it('an import that cannot be stored changes nothing', () => {
+    const base = memoryStorage();
+    const store = createStore(base);
+    store.save(upsertLog(store.getState().data, aLog));
+    const full: StorageLike = {
+      ...base,
+      getItem: base.getItem,
+      setItem: () => {
+        throw new Error('QuotaExceededError');
+      },
+    };
+    const blocked = createStore(full);
+    expect(blocked.replaceAll(emptyAppData())).toBe(false);
+    expect(blocked.getState().data.logs).toEqual([aLog]);
+    expect(base.getItem(STORAGE_KEY)).toContain('"id":"a"');
   });
 });

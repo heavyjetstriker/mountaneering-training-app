@@ -47,6 +47,12 @@ export function weekdayOf(iso: ISODate): Day {
   return DAY_ORDER[idx];
 }
 
+/** Days to the nearest Monday: 0 on Monday, back for Tue–Thu, forward for Fri–Sun. */
+export function nearestMondayOffset(iso: ISODate): number {
+  const i = DAY_ORDER.indexOf(weekdayOf(iso)); // 0 = Monday
+  return i <= 3 ? -i : 7 - i;
+}
+
 export function isValidISO(iso: string): boolean {
   try {
     return fromDayNumber(dayNumber(iso)) === iso;

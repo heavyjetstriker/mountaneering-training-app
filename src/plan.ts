@@ -50,6 +50,7 @@ function withoutUndefined<T extends object>(o: T): Partial<T> {
 export function buildEffectivePlan(plan: Plan, overrides: OverrideRecord[]): EffectivePlan {
   const changes: PlanChanges = { pauses: [], moves: {}, edits: [], replaces: [] };
   const weeks = plan.weeks.map((w) => ({ ...w }));
+  let startDate = plan.startDate;
   for (const { override: o } of sortOverrides(overrides)) {
     switch (o.kind) {
       case 'editExercise':
@@ -69,9 +70,12 @@ export function buildEffectivePlan(plan: Plan, overrides: OverrideRecord[]): Eff
       case 'pause':
         changes.pauses.push({ fromWeek: o.fromWeek, weeks: o.weeks });
         break;
+      case 'startDate':
+        startDate = o.date; // latest wins
+        break;
     }
   }
-  return { ...plan, weeks, changes };
+  return { ...plan, startDate, weeks, changes };
 }
 
 export function isWeekOnly(scope: OverrideScope): scope is { week: number } {

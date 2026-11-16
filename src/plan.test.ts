@@ -301,3 +301,35 @@ describe('effective plan (rule 7)', () => {
     expect(ex(eff(later, earlier), 1, 'mon', 'strengthA', 'back-squat').sets).toBe(5);
   });
 });
+
+describe('start date (milestone 4)', () => {
+  const start = (date: string, createdAt = '2026-11-20T00:00:00Z') => rec({ kind: 'startDate', date }, createdAt);
+
+  it('moves every week and date to the new start', () => {
+    const p = eff(start('2027-02-15'));
+    expect(p.startDate).toBe('2027-02-15');
+    expect(positionOn(p, '2026-11-16')).toMatchObject({ status: 'before', startDate: '2027-02-15' });
+    expect(positionOn(p, '2027-02-15')).toMatchObject({ status: 'active', week: 1, day: 'mon' });
+    expect(positionOn(p, '2027-03-22')).toMatchObject({ status: 'active', week: 6, day: 'mon' });
+    expect(dateOf(p, 12, 'sun')).toBe('2027-05-09');
+    expect(positionOn(p, '2027-05-10')).toMatchObject({ status: 'complete', endedOn: '2027-05-09' });
+  });
+
+  it('the latest one wins, and pauses still push it back', () => {
+    const p = eff(start('2027-03-01', '2026-11-21T00:00:00Z'), start('2027-02-15', '2026-11-20T00:00:00Z'), rec({ kind: 'pause', fromWeek: 2, weeks: 1 }));
+    expect(p.startDate).toBe('2027-03-01');
+    expect(weekStartDate(p, 2)).toBe('2027-03-15');
+  });
+
+  it('reset (no override) goes back to plan.json', () => {
+    expect(eff().startDate).toBe(plan.startDate);
+    expect(eff().startDate).toBe('2026-11-16');
+  });
+
+  it('Friday is still rest', () => {
+    const p = eff(start('2027-02-15'));
+    for (let w = 1; w <= 12; w++) expect(weekdayOf(dateOf(p, w, 'fri'))).toBe('fri');
+    expect(positionOn(p, '2027-02-19')).toMatchObject({ day: 'fri' });
+    expect(sessionTypesFor(p, 1, 'fri')).toEqual(['rest']);
+  });
+});

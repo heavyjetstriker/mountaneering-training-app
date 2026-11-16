@@ -59,3 +59,8 @@ export function clearDraft(date: string, type: SessionType) {
   delete all[keyOf(date, type)];
   writeAll(all);
 }
+
+/** After an import: the drafts belonged to the old data. */
+export function clearAllDrafts() {
+  writeAll({});
+}

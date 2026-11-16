@@ -30,3 +30,14 @@ Report what you checked and anything that still looks off.
    back squat, replace pull-ups, move Saturday (with the Friday confirm), edit week 2, the changes
    list in More, pause a week, Today while paused, then Reset all. Check the changes list reads in
    plain words and that everything is back to the original plan after the reset.
+7. Phone-ready (milestone 4): the `m4-*` shots run one flow (seeded once): Today with the backup
+   reminder, the update Flash (via `window.mtaPreviewUpdate()`), More with the Settings and Backup
+   boxes, an export (download checked), the import error Flash, the import confirm dialog with its
+   warning lines, Replace (exactly one `mta.data.backup-*` copy), the start-date dialog on a
+   non-Monday, the changes list after a new start date, Plan complete with its link, then a reset.
+   The script also checks `manifest.webmanifest` (name, start_url, scope, display, every icon is
+   served) and does the **offline reload**: waits for the service worker, sets the context offline,
+   reloads, checks Today renders and a log saves, and writes `offline-today.png`. Note that `?date=`
+   previews make "Last export" look older than it is.
+8. Icons: `python3 scripts/make_icons.py` regenerates public/icons/ from public/favicon.svg. Only
+   needed if the favicon changes.

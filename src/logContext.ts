@@ -13,9 +13,11 @@ export interface LogActions {
   openLog(target: LogTarget): void;
   /** Short success Flash at the top of the screen. */
   notify(text: string): void;
+  /** Switch to the More tab, optionally scrolled to a box (its element id). */
+  openMore(section?: 'backup' | 'settings'): void;
 }
 
-export const LogActionsContext = createContext<LogActions>({ openLog: () => {}, notify: () => {} });
+export const LogActionsContext = createContext<LogActions>({ openLog: () => {}, notify: () => {}, openMore: () => {} });
 
 export function useLogActions(): LogActions {
   return useContext(LogActionsContext);

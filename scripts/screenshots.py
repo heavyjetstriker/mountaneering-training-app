@@ -174,6 +174,105 @@ with sync_playwright() as p:
     m3.get_by_role("dialog").get_by_role("button", name="Reset", exact=True).click()
     shot(m3, "m3-after-reset")
 
+    # ---- milestone 4: phone-ready ----
+    def backup_file(logs, exported="2026-11-16T18:00:00.000Z"):
+        data = dict(FIXTURE, logs=logs)
+        return json.dumps({"app": "mountain-training-app", "exportedAt": exported, "data": data}).encode()
+
+    def pick(pg, name, buffer):
+        pg.set_input_files("input[type=file]", files=[{"name": name, "mimeType": "application/json", "buffer": buffer}])
+        pg.wait_for_timeout(200)
+
+    m4 = new_page(SEED_ONCE)
+    m4.goto(BASE + "?date=2026-11-23")
+    shot(m4, "m4-today-reminder")  # 5 logs, never exported
+    m4.evaluate("window.mtaPreviewUpdate()")
+    shot(m4, "m4-update-flash", full=False)
+    m4.get_by_role("button", name="Export a backup").click()
+    m4.wait_for_timeout(300)
+    shot(m4, "m4-more-backup", full=False)  # scrolled to the Backup box
+    m4.evaluate("window.scrollTo(0, 0)")
+    shot(m4, "m4-more")
+
+    with m4.expect_download() as dl:
+        m4.get_by_role("button", name="Export data").click()
+    d = dl.value
+    exported = json.loads(open(d.path()).read())
+    assert d.suggested_filename.startswith("mountain-training-") and d.suggested_filename.endswith(".json"), d.suggested_filename
+    assert exported["app"] == "mountain-training-app" and len(exported["data"]["logs"]) == 5, "export content"
+    assert "drafts" not in json.dumps(exported), "drafts must not be exported"
+    shot(m4, "m4-after-export", full=False)
+
+    pick(m4, "notes.json", b"{not json")
+    shot(m4, "m4-import-error", full=False)
+    pick(m4, "v2.json", json.dumps({"app": "mountain-training-app", "exportedAt": "2026-11-16T18:00:00.000Z",
+                                    "data": dict(FIXTURE, version=2)}).encode())
+    assert m4.get_by_text("from a newer version").is_visible(), "newer-version message"
+    pick(m4, "old.json", backup_file(FIXTURE["logs"][:2]))
+    shot(m4, "m4-import-confirm", full=False)
+    assert m4.get_by_text("This device has newer logs (19 Nov) than the file (16 Nov).").is_visible(), "import warning"
+    m4.get_by_role("dialog").get_by_role("button", name="Replace").click()
+    shot(m4, "m4-after-import", full=False)
+    keys = m4.evaluate("Object.keys(localStorage)")
+    assert len([k for k in keys if k.startswith("mta.data.backup-")]) == 1, keys
+    assert m4.evaluate("JSON.parse(localStorage.getItem('mta.data')).logs.length") == 2
+    pick(m4, "full.json", backup_file(FIXTURE["logs"]))  # put the 5 logs back
+    m4.get_by_role("dialog").get_by_role("button", name="Replace").click()
+
+    m4.get_by_role("button", name="Change").click()
+    m4.get_by_role("dialog").get_by_label("Week 1 starts").fill("2027-02-17")  # a Wednesday
+    shot(m4, "m4-start-date-not-monday", full=False)
+    m4.get_by_role("button", name="Use 15 Feb").click()
+    shot(m4, "m4-start-date-dialog", full=False)
+    m4.get_by_role("dialog").get_by_role("button", name="Save").click()
+    m4.evaluate("window.scrollTo(0, 0)")
+    shot(m4, "m4-more-start-changed")
+    m4.get_by_role("button", name="Today", exact=True).click()
+    shot(m4, "m4-today-before-start")
+    m4.goto(BASE + "?date=2027-05-12")
+    shot(m4, "m4-plan-complete-new-start")  # complete after the moved plan
+    m4.get_by_role("button", name="Set a new start date").click()
+    m4.get_by_role("button", name="Change").click()
+    m4.get_by_role("button", name="Use the plan's date (Monday 16 Nov)").click()
+    m4.goto(BASE + "?date=2026-11-16")
+    assert m4.get_by_text("Monday, 16 Nov").first.is_visible(), "start date reset"
+
+    # Manifest: name, start_url, scope, display, and every icon is served.
+    man = m4.request.get(BASE + "manifest.webmanifest")
+    assert man.ok, "manifest missing"
+    mj = man.json()
+    assert mj["name"] == "Mountain Training" and mj["short_name"] == "Training", mj
+    assert mj["start_url"] == "/mountaneering-training-app/" == mj["scope"] and mj["display"] == "standalone", mj
+    for icon in mj["icons"]:
+        r = m4.request.get(BASE + icon["src"])
+        assert r.ok and r.headers["content-type"] == "image/png", icon
+    assert m4.request.get(BASE + "icons/apple-touch-icon-180.png").ok
+    print("manifest: ok")
+
+    # Offline: service worker active, airplane mode, reload, Today renders, a log saves.
+    off_ctx = browser.new_context(viewport={"width": 390, "height": 844}, device_scale_factor=2)
+    off_ctx.add_init_script("if (!sessionStorage.getItem('seeded')) { localStorage.clear(); sessionStorage.setItem('seeded', '1'); }")
+    off = off_ctx.new_page()
+    off_errors = []
+    off.on("pageerror", lambda e: off_errors.append(str(e)))
+    off.on("console", lambda m: off_errors.append(m.text) if m.type == "error" else None)
+    off.goto(BASE + "?date=2026-11-19")
+    off.evaluate("navigator.serviceWorker.ready.then(() => true)")
+    off.wait_for_timeout(1500)  # let precaching finish
+    off_ctx.set_offline(True)
+    off.reload()
+    off.wait_for_timeout(800)
+    assert off.get_by_text("Thursday, 19 Nov").first.is_visible(), "Today did not render offline"
+    assert off.evaluate("!!navigator.serviceWorker.controller"), "page not served by the service worker"
+    off.get_by_role("button", name="Log session").first.click()
+    off.get_by_role("button", name="Save log").click()
+    off.wait_for_timeout(300)
+    assert off.evaluate("JSON.parse(localStorage.getItem('mta.data')).logs.length") == 1, "offline log not saved"
+    off.screenshot(path=f"{OUT}/offline-today.png", full_page=True)
+    print(f"{OUT}/offline-today.png")
+    print("offline console errors:", off_errors or "none")
+    off_ctx.close()
+
     bad = new_page(CORRUPT)
     bad.goto(BASE + "?date=2026-11-16")
     shot(bad, "log-corrupt-data")

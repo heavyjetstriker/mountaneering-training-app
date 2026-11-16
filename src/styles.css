@@ -442,3 +442,50 @@ del { text-decoration-thickness: 1px; }
 
 .week-targets { display: flex; align-items: center; justify-content: space-between; gap: var(--base-size-8); }
 .week-targets .btn-invisible { flex: none; margin-right: calc(var(--base-size-8) * -1); }
+
+/* ---------- milestone 4: phone-ready ---------- */
+.flash--neutral {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--base-size-8);
+  background: var(--bgColor-muted);
+  border-color: var(--borderColor-default);
+}
+.flash--neutral > span, .flash--danger > span, .flash--success > span { flex: 1; min-width: 0; }
+.flash-action { flex: none; margin: calc(var(--base-size-8) * -1) 0; }
+.box-row--flash { display: block; padding-top: var(--base-size-12); padding-bottom: var(--base-size-12); }
+
+/* A link that is a button: Primer link colour, full tap height */
+.link-button {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--control-minTarget-coarse);
+  padding: 0;
+  background: none;
+  border: 0;
+  color: var(--fgColor-link);
+  cursor: pointer;
+  text-align: left;
+}
+.link-button:hover { text-decoration: underline; }
+.backup-reminder {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: var(--base-size-8);
+  margin-top: var(--base-size-24);
+}
+
+.button-row { gap: var(--base-size-8); padding-top: var(--base-size-12); padding-bottom: var(--base-size-12); }
+.field-hint { flex-wrap: wrap; justify-content: space-between; padding-top: var(--base-size-12); padding-bottom: var(--base-size-12); }
+.field-hint > span { flex: 1 1 12rem; color: var(--fgColor-attention); font-size: var(--base-text-size-sm); }
+
+/* Import: file vs this device */
+.compare { width: 100%; border-collapse: collapse; }
+.compare tr.box-row { display: grid; grid-template-columns: 7.5rem 1fr 1fr; }
+.compare th, .compare td { padding: 0; text-align: left; font-weight: var(--base-text-weight-normal); }
+.compare thead th { color: var(--fgColor-muted); font-size: var(--base-text-size-sm); }
+.compare tbody th { color: var(--fgColor-muted); font-size: var(--base-text-size-sm); }
+.warning-row { align-items: flex-start; color: var(--fgColor-attention); padding-top: var(--base-size-12); padding-bottom: var(--base-size-12); }
+.warning-icon { flex: none; margin-top: var(--base-size-4); }

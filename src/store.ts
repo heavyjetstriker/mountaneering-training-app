@@ -9,6 +9,21 @@ export interface StorageLike {
   getItem(key: string): string | null;
   setItem(key: string, value: string): void;
   removeItem(key: string): void;
+  /** Enumeration (localStorage has these); used to keep only the latest recovery copy. */
+  readonly length?: number;
+  key?(index: number): string | null;
+}
+
+export const BACKUP_COPY_PREFIX = `${STORAGE_KEY}.backup-`;
+
+export function storageKeys(storage: StorageLike): string[] {
+  const out: string[] = [];
+  if (typeof storage.key !== 'function' || typeof storage.length !== 'number') return out;
+  for (let i = 0; i < storage.length; i++) {
+    const k = storage.key(i);
+    if (k !== null) out.push(k);
+  }
+  return out;
 }
 
 export interface StoreState {
@@ -74,6 +89,45 @@ export function createStore(storage: StorageLike, now: () => number = Date.now) 
         return false;
       }
     },
+    /**
+     * Import: replace everything with `next`. The current stored data is copied to
+     * mta.data.backup-<timestamp> first (only the latest copy is kept). Returns false and
+     * changes nothing if either write fails.
+     */
+    replaceAll(next: AppData): boolean {
+      let raw: string | null = null;
+      try {
+        raw = storage.getItem(STORAGE_KEY);
+      } catch {
+        raw = null;
+      }
+      const copyKey = `${BACKUP_COPY_PREFIX}${now()}`;
+      const older = storageKeys(storage).filter((k) => k.startsWith(BACKUP_COPY_PREFIX) && k !== copyKey);
+      try {
+        storage.setItem(copyKey, raw ?? JSON.stringify(state.data));
+      } catch {
+        return false;
+      }
+      try {
+        storage.setItem(STORAGE_KEY, JSON.stringify(next));
+      } catch {
+        try {
+          storage.removeItem(copyKey);
+        } catch {
+          /* ignore */
+        }
+        return false;
+      }
+      for (const k of older) {
+        try {
+          storage.removeItem(k);
+        } catch {
+          /* an extra old copy is harmless */
+        }
+      }
+      set({ data: next, corruptCopyKey: null, saveFailed: false });
+      return true;
+    },
     /** Another tab changed the data. Ignore values we can't read. */
     receiveExternal(raw: string | null) {
       const data = parseStored(raw);
@@ -97,6 +151,10 @@ export function memoryStorage(): StorageLike {
     getItem: (k) => m.get(k) ?? null,
     setItem: (k, v) => void m.set(k, v),
     removeItem: (k) => void m.delete(k),
+    get length() {
+      return m.size;
+    },
+    key: (i) => [...m.keys()][i] ?? null,
   };
 }
 

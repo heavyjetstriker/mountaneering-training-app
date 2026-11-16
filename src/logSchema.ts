@@ -2,6 +2,7 @@
 // Types are inferred from the schema so they can't drift apart.
 import { z } from 'zod';
 import { DaySchema, ExerciseSchema, SessionTypeSchema } from './schema';
+import { isValidISO, weekdayOf } from './dates';
 
 const ISODate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'expected YYYY-MM-DD');
 
@@ -82,6 +83,11 @@ export const PlanOverrideSchema = z.discriminatedUnion('kind', [
     }),
   }),
   z.object({ kind: z.literal('pause'), fromWeek: z.number().int().min(1), weeks: z.number().int().min(1) }),
+  // Milestone 4: a new start date. Must be a Monday; the latest one wins.
+  z.object({
+    kind: z.literal('startDate'),
+    date: ISODate.refine((d) => isValidISO(d) && weekdayOf(d) === 'mon', 'the plan starts on a Monday'),
+  }),
 ]);
 export type PlanOverride = z.infer<typeof PlanOverrideSchema>;
 
@@ -92,8 +98,11 @@ export const OverrideRecordSchema = z.object({
 });
 export type OverrideRecord = z.infer<typeof OverrideRecordSchema>;
 
+/** The newest AppData version this build understands. */
+export const APP_DATA_VERSION = 1;
+
 export const AppDataSchema = z.object({
-  version: z.literal(1),
+  version: z.literal(APP_DATA_VERSION),
   logs: z.array(SessionLogSchema),
   // Added now as empty arrays so later milestones don't need a migration.
   overrides: z.array(OverrideRecordSchema),

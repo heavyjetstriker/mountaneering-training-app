@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import rawPlan from './data/plan.json';
 import { parsePlan } from './schema';
 import { emptyAppData, AppDataSchema, type OverrideRecord, type PlanOverride } from './logSchema';
-import { addOverride, customExerciseId, describeOverride, listOverrides, removeOverride, resetAllOverrides } from './overrides';
+import { addOverride, customExerciseId, describeOverride, listOverrides, removeOverride, resetAllOverrides, setStartDate } from './overrides';
 
 const plan = parsePlan(rawPlan);
 const rec = (override: PlanOverride): OverrideRecord => ({ id: 'x', createdAt: '2026-11-16T10:00:00Z', override });
@@ -46,5 +46,22 @@ describe('plan changes in plain words', () => {
   it('makes stable ids for exercises I type in', () => {
     expect(customExerciseId('Ring rows')).toBe('custom-ring-rows');
     expect(customExerciseId('  Remo  à máquina! ')).toBe('custom-remo-a-maquina');
+  });
+});
+
+describe('start date change', () => {
+  it('reads "Plan start: Monday 16 Nov → Monday 15 Feb"', () => {
+    expect(say({ kind: 'startDate', date: '2027-02-15' })).toBe('Plan start: Monday 16 Nov → Monday 15 Feb');
+  });
+  it('keeps one start-date change, and the plan date removes it', () => {
+    let d = setStartDate(emptyAppData(), plan, '2027-02-15', 'a', '2026-11-20T00:00:00Z');
+    d = setStartDate(d, plan, '2027-03-01', 'b', '2026-11-21T00:00:00Z');
+    expect(d.overrides.map((o) => o.override)).toEqual([{ kind: 'startDate', date: '2027-03-01' }]);
+    expect(setStartDate(d, plan, plan.startDate, 'c', '2026-11-22T00:00:00Z').overrides).toEqual([]);
+  });
+  it('old data without the new kind stays valid; a non-Monday is rejected', () => {
+    expect(AppDataSchema.safeParse(emptyAppData()).success).toBe(true);
+    const bad = addOverride(emptyAppData(), { kind: 'startDate', date: '2027-02-16' }, 'x', '2026-11-20T00:00:00Z');
+    expect(AppDataSchema.safeParse(bad).success).toBe(false);
   });
 });

@@ -9,6 +9,8 @@ import { useAppData } from '../store';
 import { useLogActions } from '../logContext';
 import { Dialog } from '../components/Dialog';
 import { Segmented } from '../components/Segmented';
+import { BackupBox } from '../components/BackupBox';
+import { SettingsBox } from '../components/SettingsBox';
 
 function PausePlan({ plan, today }: { plan: Plan; today: string }) {
   const { notify } = useLogActions();
@@ -158,7 +160,9 @@ export function MoreView({ basePlan, plan, today }: { basePlan: Plan; plan: Plan
       <div className="stack">
         <PlanChanges basePlan={basePlan} />
         <PausePlan plan={plan} today={today} />
-        <p className="text-muted text-small">Gear checklist, settings and backup arrive in milestones 4 and 6.</p>
+        <SettingsBox basePlan={basePlan} plan={plan} />
+        <BackupBox today={today} />
+        <p className="text-muted text-small">The gear checklist arrives in milestone 6.</p>
       </div>
     </section>
   );
