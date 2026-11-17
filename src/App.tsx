@@ -20,7 +20,9 @@ import { CardioLog } from './views/CardioLog';
 import { LogActionsContext, type LogActions, type LogTarget, type TestFormTarget, type TripFormTarget } from './logContext';
 import { logKind } from './logs';
 import { getStore, useStore } from './store';
-import { buildEffectivePlan } from './plan';
+import { buildEffectivePlan, kindOf } from './plan';
+import { activePlan } from './cycles';
+import { CycleEditor } from './views/CycleEditor';
 import { MoreView } from './views/MoreView';
 import { ensurePersisted, useAppUpdate } from './pwa';
 import { Flash } from './components/Flash';
@@ -58,7 +60,7 @@ function useToday(): string {
 
 const NOTICE_MS = 4000;
 
-export function App({ plan: basePlan }: { plan: Plan }) {
+export function App({ plan: builtIn }: { plan: Plan }) {
   const [tab, setTab] = useState<Tab>('today');
   const update = useAppUpdate();
   useEffect(ensurePersisted, []);
@@ -66,17 +68,20 @@ export function App({ plan: basePlan }: { plan: Plan }) {
   const preview = previewDate();
   const today = preview ?? realToday;
   const { corruptCopyKey, saveFailed, data } = useStore();
-  // Rule 7: every screen reads plan.json with my changes applied.
-  const effective = useMemo(() => buildEffectivePlan(basePlan, data.overrides), [basePlan, data.overrides]);
-  const plan = effective;
+  // The plan in use: plan.json, or the training cycle I switched to (milestone 8).
+  const active = useMemo(() => activePlan(builtIn, data), [builtIn, data]);
+  const basePlan = active.plan;
+  // Rule 7: every screen reads that plan with my changes applied.
+  const plan = useMemo(() => buildEffectivePlan(active.plan, active.overrides), [active]);
 
   // The log screen opens full-screen over the current tab; the tab stays mounted underneath.
   const [logging, setLogging] = useState<LogTarget | null>(null);
   const [testing, setTesting] = useState<TestFormTarget | null>(null);
   const [tripping, setTripping] = useState<TripFormTarget | null>(null);
-  const fullScreen = !!logging || !!testing || !!tripping;
+  const [cycleId, setCycleId] = useState<string | null>(null);
+  const fullScreen = !!logging || !!testing || !!tripping || !!cycleId;
   // Which full-screen form is open (refs, so the actions below never see stale state).
-  const open = useRef<'log' | 'test' | 'trip' | null>(null);
+  const open = useRef<'log' | 'test' | 'trip' | 'cycle' | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const scrollY = useRef(0);
   const actions = useMemo<LogActions>(
@@ -102,6 +107,13 @@ export function App({ plan: basePlan }: { plan: Plan }) {
         setTripping(target);
         window.scrollTo(0, 0);
       },
+      openCycle(id) {
+        if (!open.current) scrollY.current = window.scrollY;
+        open.current = 'cycle';
+        setNotice(null);
+        setCycleId(id);
+        window.scrollTo(0, 0);
+      },
       openTests() {
         setTab('tests');
         window.scrollTo(0, 0);
@@ -125,6 +137,7 @@ export function App({ plan: basePlan }: { plan: Plan }) {
     setLogging(null);
     setTesting(null);
     setTripping(null);
+    setCycleId(null);
     if (saved) setNotice(saved);
     // A form opened straight from this one (log → results) keeps its own scroll.
     requestAnimationFrame(() => {
@@ -152,6 +165,12 @@ export function App({ plan: basePlan }: { plan: Plan }) {
             Previewing {shortDate(preview)}. <a href={window.location.pathname}>Back to today</a>
           </div>
         )}
+        {cycleId && (
+          <main className="screen screen--log">
+            {saveFlash && <div className="notices">{saveFlash}</div>}
+            <CycleEditor key={cycleId} id={cycleId} builtIn={builtIn} today={today} onClose={closeForm} />
+          </main>
+        )}
         {tripping && (
           <main className="screen screen--log">
             {saveFlash && <div className="notices">{saveFlash}</div>}
@@ -173,7 +192,7 @@ export function App({ plan: basePlan }: { plan: Plan }) {
         {logging && !testing && (
           <main className="screen screen--log">
             {saveFlash && <div className="notices">{saveFlash}</div>}
-            {logKind(logging.type) === 'strength' ? (
+            {logKind(kindOf(plan, logging.type)) === 'strength' ? (
               <StrengthLog key={`${logging.date}-${logging.type}`} plan={plan} target={logging} onClose={closeForm} />
             ) : (
               <CardioLog key={`${logging.date}-${logging.type}`} plan={plan} target={logging} onClose={closeForm} />
@@ -181,7 +200,7 @@ export function App({ plan: basePlan }: { plan: Plan }) {
           </main>
         )}
         <main className="screen" hidden={fullScreen}>
-          {(saveFlash || notice || update.ready || (corruptCopyKey && tab === 'today')) && (
+          {(saveFlash || notice || update.ready || active.broken || (corruptCopyKey && tab === 'today')) && (
             <div className="notices">
               {saveFlash}
               {update.ready && (
@@ -201,6 +220,22 @@ export function App({ plan: basePlan }: { plan: Plan }) {
                   Saved data couldn't be read, so the app started empty. A copy was kept for recovery.
                 </Flash>
               )}
+              {active.broken && (
+                <Flash
+                  tone="danger"
+                  action={
+                    active.cycle && (
+                      <button className="btn flash-action" onClick={() => actions.openCycle(active.cycle!.id)}>
+                        Fix
+                      </button>
+                    )
+                  }
+                >
+                  {active.cycle
+                    ? `${active.cycle.name} has problems, so the 12-week plan is shown.`
+                    : 'The cycle in use was not found, so the 12-week plan is shown.'}
+                </Flash>
+              )}
               {notice && <Flash tone="success">{notice}</Flash>}
             </div>
           )}
@@ -208,7 +243,7 @@ export function App({ plan: basePlan }: { plan: Plan }) {
           {tab === 'week' && <WeekView plan={plan} today={today} />}
           {tab === 'tests' && <TestsView today={today} />}
           {tab === 'trips' && <TripsView today={today} />}
-          {tab === 'more' && <MoreView basePlan={basePlan} plan={plan} today={today} />}
+          {tab === 'more' && <MoreView builtIn={builtIn} basePlan={basePlan} plan={plan} today={today} />}
         </main>
         {!fullScreen && (
           <nav className="tabbar" aria-label="Sections">

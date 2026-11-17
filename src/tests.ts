@@ -100,7 +100,7 @@ export function contextForWeek(plan: Plan, data: Pick<AppData, 'tests' | 'logs'>
   const monday = addDays(tuesday, -1);
   const sunday = addDays(tuesday, 5);
   const keepRetest = data.logs.some(
-    (l: SessionLog) => l.type === 'testDriftRetest' && l.date >= monday && l.date <= sunday,
+    (l: SessionLog) => !!plan.templates[l.type]?.onlyIfIntervalsOff && l.date >= monday && l.date <= sunday,
   );
   return { intervals: intervalsStatus(data.tests, tuesday), ...(keepRetest ? { keepRetest } : {}) };
 }
@@ -187,9 +187,6 @@ export function deleteTest(data: AppData, id: string): AppData {
 }
 
 /** Which result forms a test session opens. */
-export function testsForSession(type: string): TestType[] {
-  if (type === 'testDriftVertical') return ['drift', 'vertical'];
-  if (type === 'testThreshold') return ['threshold'];
-  if (type === 'testDriftRetest') return ['drift'];
-  return [];
+export function testsForSession(plan: Plan, type: string): TestType[] {
+  return plan.templates[type]?.tests ?? [];
 }

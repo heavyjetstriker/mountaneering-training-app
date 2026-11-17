@@ -33,10 +33,12 @@ export interface LogActions {
   /** Short success Flash at the top of the screen. */
   notify(text: string): void;
   /** Switch to the More tab, optionally scrolled to a box (its element id). */
-  openMore(section?: 'backup' | 'settings'): void;
+  openMore(section?: 'backup' | 'settings' | 'cycles'): void;
   openTestForm(target: TestFormTarget): void;
   openTests(): void;
   openTripForm(target: TripFormTarget): void;
+  /** The plan editor for a training cycle (full screen). */
+  openCycle(id: string): void;
 }
 
 export const LogActionsContext = createContext<LogActions>({
@@ -46,6 +48,7 @@ export const LogActionsContext = createContext<LogActions>({
   openTestForm: () => {},
   openTests: () => {},
   openTripForm: () => {},
+  openCycle: () => {},
 });
 
 export function useLogActions(): LogActions {

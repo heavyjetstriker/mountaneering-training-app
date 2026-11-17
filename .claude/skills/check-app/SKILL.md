@@ -56,3 +56,9 @@ Report what you checked and anything that still looks off.
     over (`window.mtaRestPreview(3)` makes it a 3 s timer), Minutes saved and shown in the week 2 hours
     figure, Thursday with 2:00 preselected from the plan, the Week tab Progress charts with five weeks of
     generated logs, tapping week 3 on a chart, and the empty state.
+12. Plan editor (milestone 8): the `m8-*` shots run on an empty seed: Plan complete → Build a new cycle, the
+    New cycle dialog (default start = the Monday after the plan in use ends), a blank cycle, a strength session
+    with two exercises, a session with no exercises listed under "Fix before using" (Use this cycle disabled),
+    deleting it, the week pattern, six weeks, week 2's own Tuesday, a lighter week 4 with the cut switched on in
+    Rules, Use this cycle, Today on 15 Feb showing "Week 1 of 6" and Strength C, a log saved, week 4 cut to
+    3 sets, the hike target, the Week tab, then back to the 12-week plan (Plan complete again).

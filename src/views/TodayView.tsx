@@ -1,6 +1,6 @@
 import type { Plan } from '../schema';
 import { DAY_NAMES, longDate, shortDate } from '../dates';
-import { getWeek, positionOn } from '../plan';
+import { getWeek, positionOn, totalWeeks } from '../plan';
 import { DayHeader } from '../components/DayHeader';
 import { DaySessions } from '../components/DaySessions';
 import { exportAgeText, shouldRemindBackup } from '../backup';
@@ -42,10 +42,13 @@ function TodayBody({ plan, today }: { plan: Plan; today: string }) {
       <section className="blankslate">
         <h1 className="page-title">Plan complete</h1>
         <p className="text-muted">
-          All 12 weeks finished on {shortDate(pos.endedOn)}. Repeat Block 3 with heavier packs, or start the plan
-          again.
+          All {totalWeeks(plan)} weeks finished on {shortDate(pos.endedOn)}. Build your next cycle, repeat the last
+          block with heavier packs, or start this plan again.
         </p>
-        <p>
+        <p className="blankslate-actions">
+          <button className="link-button" onClick={() => openMore('cycles')}>
+            Build a new cycle
+          </button>
           <button className="link-button" onClick={() => openMore('settings')}>
             Set a new start date
           </button>
@@ -67,7 +70,7 @@ function TodayBody({ plan, today }: { plan: Plan; today: string }) {
 
   return (
     <section>
-      <DayHeader title={`${DAY_NAMES[pos.day]}, ${shortDate(today)}`} week={getWeek(plan, pos.week)} />
+      <DayHeader title={`${DAY_NAMES[pos.day]}, ${shortDate(today)}`} week={getWeek(plan, pos.week)} total={totalWeeks(plan)} />
       <DaySessions plan={plan} week={pos.week} day={pos.day} date={today} today={today} />
     </section>
   );

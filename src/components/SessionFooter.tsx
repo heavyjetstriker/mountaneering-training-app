@@ -6,7 +6,6 @@ import { getStore, newId, useAppData } from '../store';
 import { deleteLog, logFor, logKind, logSummary, STATUS_TEXT, upsertLog } from '../logs';
 import { readDraft } from '../drafts';
 import { useLogActions } from '../logContext';
-import { testsForSession } from '../tests';
 
 const UNDO_MS = 6000;
 
@@ -41,7 +40,7 @@ export function SessionFooter({
     return () => window.clearTimeout(t);
   }, [undoId]);
 
-  if (logKind(session.type) === 'none') return null;
+  if (logKind(session.kind) === 'none') return null;
 
   if (date > today) {
     return <p className="box-row box-footer text-muted text-small">You can log this on the day.</p>;
@@ -50,7 +49,7 @@ export function SessionFooter({
   const target = { date, week, day, type: session.type };
 
   if (!log) {
-    const hasDraft = logKind(session.type) === 'strength' && readDraft(date, session.type) !== null;
+    const hasDraft = logKind(session.kind) === 'strength' && readDraft(date, session.type) !== null;
     const skip = () => {
       const store = getStore();
       const id = newId();
@@ -70,7 +69,7 @@ export function SessionFooter({
       <div className="box-row box-footer">
         {/* On a test session, Enter results is the main action. */}
         <button
-          className={`btn btn-grow ${testsForSession(session.type).length ? '' : 'btn-primary'}`}
+          className={`btn btn-grow ${session.tests?.length ? '' : 'btn-primary'}`}
           onClick={() => openLog(target)}
         >
           {hasDraft ? 'Continue log' : 'Log session'}

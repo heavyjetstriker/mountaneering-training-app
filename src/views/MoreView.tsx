@@ -2,7 +2,7 @@ import { useState } from 'react';
 import type { Plan } from '../schema';
 import type { OverrideRecord } from '../logSchema';
 import { addDays, longDate } from '../dates';
-import { positionOn, TOTAL_WEEKS, weekStartDate } from '../plan';
+import { positionOn, totalWeeks, weekStartDate } from '../plan';
 import { describeOverride, listOverrides } from '../overrides';
 import { commitOverride, resetAll, resetOverride } from '../actions';
 import { useAppData } from '../store';
@@ -12,6 +12,7 @@ import { Segmented } from '../components/Segmented';
 import { BackupBox } from '../components/BackupBox';
 import { SettingsBox } from '../components/SettingsBox';
 import { GearBox } from '../components/GearBox';
+import { CyclesBox } from '../components/CyclesBox';
 
 function PausePlan({ plan, today }: { plan: Plan; today: string }) {
   const { notify } = useLogActions();
@@ -31,11 +32,11 @@ function PausePlan({ plan, today }: { plan: Plan; today: string }) {
     );
   }
 
-  const fromOptions = [current, current + 1].filter((w) => w <= TOTAL_WEEKS);
+  const fromOptions = [current, current + 1].filter((w) => w <= totalWeeks(plan));
   const label = (w: number) =>
     pos.status === 'active' && w === current ? `This week (${w})` : pos.status === 'active' ? `Next week (${w})` : `Week ${w}`;
   const newStart = addDays(weekStartDate(plan, from), weeks * 7);
-  const newEnd = addDays(weekStartDate(plan, TOTAL_WEEKS), weeks * 7 + 6);
+  const newEnd = addDays(weekStartDate(plan, totalWeeks(plan)), weeks * 7 + 6);
   const pausingThisWeek = pos.status === 'active' && from === current;
 
   const pause = () => {
@@ -118,7 +119,7 @@ function PlanChanges({ basePlan }: { basePlan: Plan }) {
         <ul>
           {changes.map((c) => (
             <li key={c.id} className="box-row change-row">
-              <span className="change-text">{describeOverride(basePlan, c, data.overrides)}</span>
+              <span className="change-text">{describeOverride(basePlan, c, changes)}</span>
               <button className="btn-invisible" onClick={() => setConfirm(c)}>
                 Reset
               </button>
@@ -144,7 +145,7 @@ function PlanChanges({ basePlan }: { basePlan: Plan }) {
           <p className="box-row text-muted">
             {confirm === 'all'
               ? `All ${changes.length} changes go, and the plan is back to the original. Your logs stay.`
-              : `${describeOverride(basePlan, confirm, data.overrides)}. The plan goes back to the original here. Your logs stay.`}
+              : `${describeOverride(basePlan, confirm, changes)}. The plan goes back to the original here. Your logs stay.`}
           </p>
         </Dialog>
       )}
@@ -152,7 +153,7 @@ function PlanChanges({ basePlan }: { basePlan: Plan }) {
   );
 }
 
-export function MoreView({ basePlan, plan, today }: { basePlan: Plan; plan: Plan; today: string }) {
+export function MoreView({ builtIn, basePlan, plan, today }: { builtIn: Plan; basePlan: Plan; plan: Plan; today: string }) {
   return (
     <section>
       <header className="page-head">
@@ -160,6 +161,7 @@ export function MoreView({ basePlan, plan, today }: { basePlan: Plan; plan: Plan
       </header>
       <div className="stack">
         <GearBox plan={plan} />
+        <CyclesBox builtIn={builtIn} plan={plan} today={today} />
         <PlanChanges basePlan={basePlan} />
         <PausePlan plan={plan} today={today} />
         <SettingsBox basePlan={basePlan} plan={plan} />

@@ -2,10 +2,22 @@
 import type { Exercise, Plan } from './schema';
 import type { AppData, OverrideRecord, OverrideScope, PlanOverride } from './logSchema';
 import { DAY_NAMES, longDate } from './dates';
-import { getWeek, isWeekOnly, sortOverrides } from './plan';
+import { getWeek, isWeekOnly, sortOverrides, weekTargetNames } from './plan';
 
+/** Whether a change belongs to the plan in use (a cycle, or the 12-week plan when none is active). */
+function inUse(data: Pick<AppData, 'activeCycle'>, o: OverrideRecord): boolean {
+  return (o.cycleId ?? null) === data.activeCycle;
+}
+
+/** The changes made in the plan in use; changes from other cycles never apply to it. */
+export function activeOverrides(data: Pick<AppData, 'overrides' | 'activeCycle'>): OverrideRecord[] {
+  return data.overrides.filter((o) => inUse(data, o));
+}
+
+/** A new change, made in the plan in use. */
 export function addOverride(data: AppData, override: PlanOverride, id: string, createdAt: string): AppData {
-  return { ...data, overrides: [...data.overrides, { id, createdAt, override }] };
+  const record: OverrideRecord = { id, createdAt, override, ...(data.activeCycle ? { cycleId: data.activeCycle } : {}) };
+  return { ...data, overrides: [...data.overrides, record] };
 }
 
 /** Resetting a change = deleting its override record. */
@@ -18,17 +30,18 @@ export function removeOverride(data: AppData, id: string): AppData {
  * Picking the plan's own date just removes the change.
  */
 export function setStartDate(data: AppData, plan: Plan, date: string, id: string, createdAt: string): AppData {
-  const rest = { ...data, overrides: data.overrides.filter((o) => o.override.kind !== 'startDate') };
+  const rest = { ...data, overrides: data.overrides.filter((o) => !(inUse(data, o) && o.override.kind === 'startDate')) };
   return date === plan.startDate ? rest : addOverride(rest, { kind: 'startDate', date }, id, createdAt);
 }
 
+/** Reset all = every change in the plan in use; other cycles keep theirs. */
 export function resetAllOverrides(data: AppData): AppData {
-  return { ...data, overrides: [] };
+  return { ...data, overrides: data.overrides.filter((o) => !inUse(data, o)) };
 }
 
-/** The changes list, oldest first (the order they apply in). */
+/** The changes list of the plan in use, oldest first (the order they apply in). */
 export function listOverrides(data: AppData): OverrideRecord[] {
-  return sortOverrides(data.overrides);
+  return sortOverrides(activeOverrides(data));
 }
 
 // ---------- plain words ----------
@@ -96,8 +109,9 @@ export function describeOverride(plan: Plan, record: OverrideRecord, all: Overri
         if (c.longHike.hours !== w.longHike.hours) parts.push(`hike ${w.longHike.hours} → ${c.longHike.hours}`);
         if (c.longHike.packKg !== w.longHike.packKg) parts.push(`pack ${w.longHike.packKg} → ${c.longHike.packKg}`);
       }
-      if (c.sunday !== undefined) parts.push(`Sunday "${c.sunday}"`);
-      if (c.meVolume !== undefined) parts.push('Thursday changed');
+      const names = weekTargetNames(plan);
+      if (c.sunday !== undefined) parts.push(`${names.recovery ?? 'Recovery'} "${c.sunday}"`);
+      if (c.meVolume !== undefined) parts.push(`${names.endurance ?? 'Endurance'} changed`);
       if (c.notes !== undefined) parts.push('notes changed');
       return `Week ${o.week}: ${parts.join(', ') || 'no change'}`;
     }

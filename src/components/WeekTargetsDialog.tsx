@@ -1,12 +1,14 @@
 import { useState } from 'react';
-import type { PlanWeek } from '../schema';
+import type { Plan, PlanWeek } from '../schema';
+import { weekTargetNames } from '../plan';
 import { commitOverride } from '../actions';
 import { useLogActions } from '../logContext';
 import { Dialog } from './Dialog';
 
-/** Edit one week's hike, pack, Sunday, Thursday and notes. Only changed fields are stored. */
-export function WeekTargetsDialog({ week, onClose }: { week: PlanWeek; onClose: () => void }) {
+/** Edit one week's hike, pack, recovery, endurance and notes (the ones the plan uses). Only changed fields are stored. */
+export function WeekTargetsDialog({ plan, week, onClose }: { plan: Plan; week: PlanWeek; onClose: () => void }) {
   const { notify } = useLogActions();
+  const names = weekTargetNames(plan);
   const initial = {
     hours: week.longHike.hours,
     packKg: week.longHike.packKg,
@@ -23,7 +25,8 @@ export function WeekTargetsDialog({ week, onClose }: { week: PlanWeek; onClose: 
 
   const save = () => {
     const f = Object.fromEntries(Object.entries(form).map(([k, v]) => [k, v.trim()])) as typeof form;
-    if (!f.hours || !f.packKg || !f.sunday || !f.meVolume) return setError('Only the notes can be empty.');
+    if ((names.hike && (!f.hours || !f.packKg)) || (names.recovery && !f.sunday) || (names.endurance && !f.meVolume))
+      return setError('Only the notes can be empty.');
     const changes: { longHike?: PlanWeek['longHike']; sunday?: string; meVolume?: string; notes?: string } = {};
     if (f.hours !== initial.hours || f.packKg !== initial.packKg) changes.longHike = { hours: f.hours, packKg: f.packKg };
     if (f.sunday !== initial.sunday) changes.sunday = f.sunday;
@@ -51,23 +54,31 @@ export function WeekTargetsDialog({ week, onClose }: { week: PlanWeek; onClose: 
         </>
       }
     >
-      <p className="box-row box-row--note">Saturday's minutes and pack are prefilled from these when you log.</p>
-      <label className="box-row field">
-        <span className="field-label">Hike length</span>
-        <input className="input input--grow" {...field('hours')} />
-      </label>
-      <label className="box-row field">
-        <span className="field-label">Hike pack</span>
-        <input className="input input--grow" {...field('packKg')} />
-      </label>
-      <label className="box-row field field--stacked">
-        <span className="field-label">Sunday</span>
-        <input className="input input--grow" {...field('sunday')} />
-      </label>
-      <label className="box-row field field--stacked">
-        <span className="field-label">Thursday</span>
-        <textarea className="input textarea" rows={3} {...field('meVolume')} />
-      </label>
+      {names.hike && (
+        <>
+          <p className="box-row box-row--note">The hike's minutes and pack are prefilled from these when you log.</p>
+          <label className="box-row field">
+            <span className="field-label">Hike length</span>
+            <input className="input input--grow" {...field('hours')} />
+          </label>
+          <label className="box-row field">
+            <span className="field-label">Hike pack</span>
+            <input className="input input--grow" {...field('packKg')} />
+          </label>
+        </>
+      )}
+      {names.recovery && (
+        <label className="box-row field field--stacked">
+          <span className="field-label">{names.recovery}</span>
+          <input className="input input--grow" {...field('sunday')} />
+        </label>
+      )}
+      {names.endurance && (
+        <label className="box-row field field--stacked">
+          <span className="field-label">{names.endurance}</span>
+          <textarea className="input textarea" rows={3} {...field('meVolume')} />
+        </label>
+      )}
       <label className="box-row field field--stacked">
         <span className="field-label">Notes</span>
         <textarea className="input textarea" rows={2} {...field('notes')} />

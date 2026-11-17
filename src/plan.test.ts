@@ -10,6 +10,7 @@ import {
   dateOf,
   resolveSwap,
   buildEffectivePlan,
+  kindOf,
   slotsFor,
   DEFAULT_CONTEXT,
   type Context,
@@ -335,5 +336,25 @@ describe('start date (milestone 4)', () => {
     for (let w = 1; w <= 12; w++) expect(weekdayOf(dateOf(p, w, 'fri'))).toBe('fri');
     expect(positionOn(p, '2027-02-19')).toMatchObject({ day: 'fri' });
     expect(sessionTypesFor(p, 1, 'fri', C)).toEqual(['rest']);
+  });
+});
+
+describe('rules come from plan.json (milestone 8)', () => {
+  it('the 12-week plan spells out its block rules, and without them nothing changes', () => {
+    expect(plan.rules).toMatchObject({ lighterCut: true, testWeekHalve: true, mainLifts: { '2': { sets: 4, reps: '4' }, '3': { sets: 3, reps: '4' } } });
+    const bare = { ...plan, rules: {} };
+    const squat = (p: typeof plan, week: number) =>
+      resolveSession(p, week, 'mon', 'strengthA', DEFAULT_CONTEXT).exercises!.find((e) => e.id === 'back-squat')!;
+    expect(squat(plan, 5)).toMatchObject({ sets: 4, reps: '4' });
+    expect(squat(bare, 5)).toMatchObject({ sets: 4, reps: '5' });
+    expect(squat(plan, 8).sets).toBe(3); // lighter week cut
+    expect(squat(bare, 8)).toMatchObject({ sets: 4, reps: '5' });
+    expect(resolveSession(bare, 12, 'mon', 'zone2Incline', DEFAULT_CONTEXT).cardio!.minutes).toEqual([30, 45]);
+  });
+
+  it('every session has a kind, and behaviour follows the kind, not the name', () => {
+    for (const t of Object.values(plan.templates)) expect(t.kind).toBeTruthy();
+    expect(kindOf(plan, 'longDayTest')).toBe('hikeTest');
+    expect(kindOf(plan, 'nope')).toBe('rest');
   });
 });

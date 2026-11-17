@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { Day, Plan, SessionType } from '../schema';
 import { DAY_NAMES } from '../dates';
-import { getWeek, sessionsFor, type ResolvedExercise } from '../plan';
+import { blockHint, getWeek, sessionsFor, type ResolvedExercise } from '../plan';
 import { useWeekContext } from '../useWeekContext';
 import { useAppData } from '../store';
 import { SessionCard } from './SessionCard';
@@ -31,7 +31,7 @@ export function DaySessions({
   const w = getWeek(plan, week);
   const ctx = useWeekContext(plan, week);
   const sessions = sessionsFor(plan, week, day, ctx);
-  const isRest = sessions.length === 1 && sessions[0].type === 'rest';
+  const isRest = sessions.length === 1 && sessions[0].kind === 'rest';
   const gymDay = sessions.some((s) => s.adjustment !== 'none');
   const logged = logs.some((l) => l.date === date && sessions.some((s) => s.type === l.type));
   const editingSession = editing && sessions.find((s) => s.type === editing.type);
@@ -55,7 +55,7 @@ export function DaySessions({
           <SessionCard
             key={`${s.type}-${i}`}
             session={s}
-            week={w}
+            hint={blockHint(plan, w.block)}
             onEditExercise={(ex) => setEditing({ type: s.type, ex })}
             footer={
               <>

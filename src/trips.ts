@@ -3,7 +3,7 @@ import type { Plan, SessionType } from './schema';
 import type { AppData, Trip } from './logSchema';
 import { WebLink } from './logSchema';
 import type { ISODate } from './dates';
-import { getWeek, positionOn, sessionTypesFor } from './plan';
+import { getWeek, HIKE_KINDS, kindOf, positionOn, sessionTypesFor } from './plan';
 import { contextForWeek } from './tests';
 import { lowerKg } from './logs';
 
@@ -56,14 +56,13 @@ export function defaultStatus(date: ISODate, today: ISODate): Trip['status'] {
   return date >= today ? 'planned' : 'done';
 }
 
-const HIKE_DAYS: SessionType[] = ['longHike', 'longDayTest'];
 
 /** The day's planned hike, if it has one (moved days and my week edits count). */
 export function hikeOn(plan: Plan, data: Pick<AppData, 'tests' | 'logs'>, date: ISODate): SessionType | null {
   const pos = positionOn(plan, date);
   if (pos.status !== 'active') return null;
   const types = sessionTypesFor(plan, pos.week, pos.day, contextForWeek(plan, data, pos.week));
-  return types.find((t) => HIKE_DAYS.includes(t)) ?? null;
+  return types.find((t) => HIKE_KINDS.includes(kindOf(plan, t))) ?? null;
 }
 
 /** The week's planned pack (lower kg) on a long hike or long-day test day; else null. */

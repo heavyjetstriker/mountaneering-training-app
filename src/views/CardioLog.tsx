@@ -33,7 +33,7 @@ export function CardioLog({ plan, target, onClose }: { plan: Plan; target: LogTa
   const { date, week, day, type } = target;
   const ctx = useWeekContext(plan, week);
   const session = useMemo(() => resolveSession(plan, week, day, type, ctx), [plan, week, day, type, ctx]);
-  const isTest = logKind(type) === 'test';
+  const isTest = logKind(session.kind) === 'test';
   const prefill = useMemo(() => cardioPrefill(session, getWeek(plan, week)), [session, plan, week]);
   const [existing] = useState(() => logFor(data.logs, date, type));
 
@@ -62,7 +62,7 @@ export function CardioLog({ plan, target, onClose }: { plan: Plan; target: LogTa
   const set = <K extends keyof Form>(k: K, v: Form[K]) => setForm((f) => ({ ...f, [k]: v }));
 
   const { openTestForm } = useLogActions();
-  const testTypes = testsForSession(type);
+  const testTypes = testsForSession(plan, type);
 
   const save = (then?: () => void) => {
     const minutes = parseNumber(form.minutes);
@@ -103,7 +103,7 @@ export function CardioLog({ plan, target, onClose }: { plan: Plan; target: LogTa
       dirty={dirty}
       canDelete={!!existing}
       onSave={() => save()}
-      bar={type === 'me' ? <RestTimer planRest={restFromPlan(session.target ?? '')} /> : undefined}
+      bar={session.kind === 'endurance' ? <RestTimer planRest={restFromPlan(session.target ?? '')} /> : undefined}
       onDiscard={() => onClose()}
       onDelete={remove}
     >

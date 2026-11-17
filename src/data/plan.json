@@ -1,4 +1,5 @@
 {
+  "name": "12-week plan",
   "startDate": "2026-11-16",
   "weekly": {
     "mon": ["strengthA", "zone2Incline"],
@@ -11,7 +12,7 @@
   },
   "templates": {
     "strengthA": {
-      "type": "strengthA",
+      "type": "strengthA", "kind": "strength",
       "title": "Strength A",
       "exercises": [
         { "id": "back-squat", "name": "Back squat", "sets": 4, "reps": "5", "mainLift": true },
@@ -27,7 +28,7 @@
       ]
     },
     "strengthB": {
-      "type": "strengthB",
+      "type": "strengthB", "kind": "strength",
       "title": "Strength B",
       "exercises": [
         { "id": "deadlift", "name": "Deadlift (trap bar or conventional)", "sets": 4, "reps": "4", "mainLift": true },
@@ -40,45 +41,55 @@
       ]
     },
     "zone2Incline": {
-      "type": "zone2Incline",
+      "type": "zone2Incline", "kind": "cardio",
       "title": "Zone 2 on the incline treadmill",
       "cardio": { "minutes": [30, 45], "zone": "Zone 2", "where": "Incline treadmill" }
     },
     "zone2Long": {
-      "type": "zone2Long",
+      "type": "zone2Long", "kind": "cardio", "intervals": true,
       "title": "Zone 2",
       "cardio": { "minutes": [60, 90], "zone": "Zone 2", "where": "Incline treadmill, stairmaster or a hilly trail" },
       "intervalsHow": "In the middle of the Zone 2 session, on a steep incline treadmill or hill. 3 min easy between reps. No pack."
     },
     "zone2Stairs": {
-      "type": "zone2Stairs",
+      "type": "zone2Stairs", "kind": "cardio",
       "title": "Zone 2 on the stairmaster",
       "cardio": { "minutes": [30, 45], "zone": "Zone 2", "where": "Stairmaster" }
     },
-    "me": { "type": "me", "title": "Muscular endurance" },
-    "longHike": { "type": "longHike", "title": "Long hike" },
-    "recovery": { "type": "recovery", "title": "Recovery" },
-    "rest": { "type": "rest", "title": "Rest day", "instructions": "No training. Mobility only." },
+    "me": { "type": "me", "kind": "endurance", "title": "Muscular endurance" },
+    "longHike": { "type": "longHike", "kind": "hike", "title": "Long hike" },
+    "recovery": { "type": "recovery", "kind": "recovery", "title": "Recovery" },
+    "rest": { "type": "rest", "kind": "rest", "title": "Rest day", "instructions": "No training. Mobility only." },
     "testDriftVertical": {
-      "type": "testDriftVertical",
+      "type": "testDriftVertical", "kind": "test", "tests": ["drift", "vertical"],
       "title": "Drift test and vertical test",
       "instructions": "Drift test: use a chest strap, not a wrist sensor. On a flat treadmill or a flat loop, build up over 15 min to an easy effort, then hold a steady pace for 60 min while recording heart rate. Note your starting HR and the average HR of the first and second 30 min.\nVertical test: 60 min on the stairmaster or incline treadmill at a fixed incline (e.g. 15%) with a 10 kg pack, at a steady Zone 2. Record vertical metres and average HR. Do both under the same conditions in week 1 and week 12."
     },
     "testThreshold": {
-      "type": "testThreshold",
+      "type": "testThreshold", "kind": "test", "tests": ["threshold"],
       "title": "Threshold test",
       "instructions": "After the warm-up, 30 min hard, steady effort on the incline treadmill or uphill, on a different day from the drift test. Log the average heart rate as your threshold HR; it approximates your anaerobic threshold. Then easy Zone 2 until the session reaches about 60 min."
     },
     "testDriftRetest": {
-      "type": "testDriftRetest",
+      "type": "testDriftRetest", "kind": "test", "tests": ["drift"], "onlyIfIntervalsOff": "zone2Long",
       "title": "Drift retest",
       "instructions": "Your intervals are still off, so repeat the drift test: chest strap, flat treadmill or loop, 15 min build-up to an easy effort, then 60 min at a steady pace. Note your starting HR and the average HR of each 30-min half. The threshold gap is recalculated with your latest threshold result."
     },
     "longDayTest": {
-      "type": "longDayTest",
+      "type": "longDayTest", "kind": "hikeTest",
       "title": "Long-day test",
       "instructions": "5 h hike with a 12–14 kg pack on the hilliest route you can reach, including a real descent. You're ready for multi-day treks if you finish feeling you could do it again the next day."
     }
+  },
+  "rules": {
+    "mainLifts": { "2": { "sets": 4, "reps": "4" }, "3": { "sets": 3, "reps": "4" } },
+    "blockHints": {
+      "1": "Moderate weight, 2–3 reps in reserve.",
+      "2": "Main lifts: add a little weight each week.",
+      "3": "Main lifts: hold the weight."
+    },
+    "lighterCut": true,
+    "testWeekHalve": true
   },
   "exerciseLibrary": [
     { "id": "lat-pulldown", "name": "Lat pulldown", "sets": 4, "reps": "5–6", "mainLift": true },

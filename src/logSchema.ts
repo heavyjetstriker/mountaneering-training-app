@@ -1,7 +1,7 @@
 // Shape of my records in browser storage (milestone 2: session logs).
 // Types are inferred from the schema so they can't drift apart.
 import { z } from 'zod';
-import { DaySchema, ExerciseSchema, SessionTypeSchema } from './schema';
+import { DaySchema, ExerciseSchema, PlanBaseSchema, SessionTypeSchema } from './schema';
 import { isValidISO, weekdayOf } from './dates';
 
 const ISODate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'expected YYYY-MM-DD');
@@ -95,6 +95,8 @@ export const OverrideRecordSchema = z.object({
   id: z.string().min(1),
   createdAt: z.string(), // ISO timestamp; overrides apply in this order
   override: PlanOverrideSchema,
+  /** Milestone 8: the training cycle this change was made in. None = the 12-week plan. */
+  cycleId: z.string().min(1).optional(),
 });
 export type OverrideRecord = z.infer<typeof OverrideRecordSchema>;
 
@@ -170,6 +172,21 @@ export const GearItemSchema = z.object({
 });
 export type GearItem = z.infer<typeof GearItemSchema>;
 
+// ---------- training cycles (milestone 8) ----------
+
+/**
+ * A plan I built in the app. Stored in the plan's shape; while I edit it, it may still have
+ * problems (planIssues in schema.ts), and it can only be used once it has none.
+ */
+export const CycleSchema = z.object({
+  id: z.string().min(1),
+  name: z.string().trim().min(1).max(40),
+  createdAt: z.string(),
+  savedAt: z.string(),
+  plan: PlanBaseSchema,
+});
+export type Cycle = z.infer<typeof CycleSchema>;
+
 /** The newest AppData version this build understands. */
 export const APP_DATA_VERSION = 1;
 
@@ -181,9 +198,13 @@ export const AppDataSchema = z.object({
   tests: z.array(TestResultSchema),
   trips: z.array(TripSchema),
   gear: z.array(GearItemSchema),
+  // Milestone 8, with defaults so older data and backups still load as version 1.
+  cycles: z.array(CycleSchema).default([]),
+  /** The cycle in use; null = the 12-week plan (plan.json). */
+  activeCycle: z.string().nullable().default(null),
 });
 export type AppData = z.infer<typeof AppDataSchema>;
 
 export function emptyAppData(): AppData {
-  return { version: 1, logs: [], overrides: [], tests: [], trips: [], gear: [] };
+  return { version: 1, logs: [], overrides: [], tests: [], trips: [], gear: [], cycles: [], activeCycle: null };
 }

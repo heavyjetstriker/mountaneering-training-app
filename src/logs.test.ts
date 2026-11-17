@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import rawPlan from './data/plan.json';
 import { parsePlan, type Exercise } from './schema';
 import { emptyAppData, type LoggedSet, type SessionLog } from './logSchema';
-import { DEFAULT_CONTEXT, getWeek, resolveSession } from './plan';
+import { DEFAULT_CONTEXT, getWeek, kindOf, resolveSession } from './plan';
 import {
   cardioPrefill,
   dayStatus,
@@ -211,9 +211,10 @@ describe('cardio prefill', () => {
     expect(prefill(12, 'sat', 'longDayTest').minutes).toBe(300);
   });
   it('knows which screen a session gets', () => {
-    expect(logKind('strengthB')).toBe('strength');
-    expect(logKind('testThreshold')).toBe('test');
-    expect(logKind('recovery')).toBe('cardio');
-    expect(logKind('rest')).toBe('none');
+    expect(logKind(kindOf(plan, 'strengthB'))).toBe('strength');
+    expect(logKind(kindOf(plan, 'testThreshold'))).toBe('test');
+    expect(logKind(kindOf(plan, 'longDayTest'))).toBe('test');
+    expect(logKind(kindOf(plan, 'recovery'))).toBe('cardio');
+    expect(logKind(kindOf(plan, 'rest'))).toBe('none');
   });
 });

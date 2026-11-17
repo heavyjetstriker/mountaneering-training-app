@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import type { Plan } from '../../schema';
 import { useAppData } from '../../store';
 import { hoursByWeek, packByWeek, topSetByWeek } from '../../progress';
+import { HIKE_KINDS } from '../../plan';
 import { WeekChart, type Series } from './WeekChart';
 
 const PINE = 'var(--data-pine-color-emphasis)';
@@ -52,7 +53,7 @@ function ChartBox({ title, meta, empty, children }: { title: string; meta: strin
   );
 }
 
-/** Week tab → Progress: hours, long-hike pack, squat and deadlift, across weeks 1–12. */
+/** Week tab → Progress: hours, long-hike pack, squat and deadlift, across the plan's weeks. */
 export function ProgressCharts({ plan, week, onSelect }: { plan: Plan; week: number; onSelect: (w: number) => void }) {
   const { logs } = useAppData();
   const hours = useMemo(() => hoursByWeek(plan, logs), [plan, logs]);
@@ -60,6 +61,10 @@ export function ProgressCharts({ plan, week, onSelect }: { plan: Plan; week: num
   const squat = useMemo(() => topSetByWeek(plan, logs, 'back-squat'), [plan, logs]);
   const dead = useMemo(() => topSetByWeek(plan, logs, 'deadlift'), [plan, logs]);
   const i = week - 1;
+  // A cycle without hikes, or without squat and deadlift, doesn't get that chart.
+  const templates = Object.values(plan.templates);
+  const hasHike = templates.some((t) => HIKE_KINDS.includes(t.kind));
+  const hasLifts = templates.some((t) => t.exercises?.some((e) => e.id === 'back-squat' || e.id === 'deadlift'));
   const weeks = hours.map((_, k) => `Week ${k + 1}`);
 
   const p = pack[i];
@@ -89,6 +94,7 @@ export function ProgressCharts({ plan, week, onSelect }: { plan: Plan; week: num
         <HiddenTable caption="Hours trained per week" cols={['Week', 'Hours']} rows={hours.map((h, k) => [weeks[k], h])} />
       </ChartBox>
 
+      {hasHike && (
       <ChartBox
         title="Long-hike pack"
         meta={`Week ${week}: ${kg(p.logged)}${planned ? ` (planned ${planned})` : ''}`}
@@ -117,7 +123,9 @@ export function ProgressCharts({ plan, week, onSelect }: { plan: Plan; week: num
           rows={pack.map((w, k) => [weeks[k], kg(w.logged), w.planned ? `${w.planned[0]}–${w.planned[1]} kg` : ''])}
         />
       </ChartBox>
+      )}
 
+      {hasLifts && (
       <ChartBox
         title="Squat and deadlift"
         meta={`Week ${week}: squat ${kg(squat[i])}, deadlift ${kg(dead[i])}`}
@@ -150,6 +158,7 @@ export function ProgressCharts({ plan, week, onSelect }: { plan: Plan; week: num
           The heaviest set of back squat and deadlift each week. A replaced exercise isn't included.
         </p>
       </ChartBox>
+      )}
     </section>
   );
 }

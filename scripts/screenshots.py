@@ -537,6 +537,113 @@ with sync_playwright() as p:
     assert e7.get_by_text("Log a few sessions to see this.").count() == 3
     shot(e7, "m7-progress-empty")
 
+    # ---- milestone 8: plan editor (training cycles) ----
+    m8 = new_page(seed_with(EMPTY))
+    m8.goto(BASE + "?date=2027-02-10")  # after the 12-week plan
+    m8.get_by_role("button", name="Build a new cycle").click()
+    m8.wait_for_timeout(300)
+    shot(m8, "m8-more-cycles", full=False)
+    m8.locator("#cycles").get_by_role("button", name="New cycle").click()
+    dlg = m8.get_by_role("dialog")
+    assert dlg.get_by_label("Starts").input_value() == "2027-02-15", "default start isn't the next Monday"
+    shot(m8, "m8-new-cycle", full=False)
+    dlg.get_by_label("Name").fill("Spring cycle")
+    dlg.get_by_role("radio", name="Blank").check()
+    dlg.get_by_role("button", name="Create").click()
+    m8.wait_for_timeout(300)
+    assert m8.get_by_role("heading", name="Spring cycle").is_visible()
+    shot(m8, "m8-editor-blank")
+
+    # A strength session with two exercises.
+    m8.get_by_role("button", name="Add session").click()
+    m8.get_by_role("dialog").get_by_label("Title").fill("Strength C")
+    m8.get_by_role("dialog").get_by_role("button", name="Add").click()
+    m8.wait_for_timeout(200)
+    for name, sets_, reps, main in [("Back squat", "5", "5", True), ("Step-ups", "3", "10 per leg", False)]:
+        m8.get_by_role("button", name="Add exercise").click()
+        d = m8.get_by_role("dialog")
+        d.get_by_label("Name").fill(name)
+        d.get_by_label("Sets").fill(sets_)
+        d.get_by_label("Reps").fill(reps)
+        if main:
+            d.get_by_label("Main lift").check()
+        d.get_by_role("button", name="Add").click()
+    shot(m8, "m8-session-strength")
+    m8.get_by_role("button", name="Spring cycle").click()
+
+    # A hike, and a session with a problem (no exercises).
+    m8.get_by_role("button", name="Add session").click()
+    m8.get_by_role("dialog").get_by_label("Title").fill("Hill hike")
+    m8.get_by_role("dialog").get_by_role("radio", name="Hike Its target").check()
+    m8.get_by_role("dialog").get_by_role("button", name="Add").click()
+    m8.get_by_role("button", name="Spring cycle").click()
+    m8.get_by_role("button", name="Add session").click()
+    m8.get_by_role("dialog").get_by_label("Title").fill("Core")
+    m8.get_by_role("dialog").get_by_role("button", name="Add").click()
+    m8.get_by_role("button", name="Spring cycle").click()
+    assert m8.get_by_text("Core has no exercises.").is_visible()
+    assert m8.get_by_role("button", name="Use this cycle").is_disabled()
+    shot(m8, "m8-problems", full=False)
+    m8.get_by_role("button", name="Core Strength").click()
+    m8.get_by_role("button", name="Delete session").click()
+    m8.get_by_role("dialog").get_by_role("button", name="Delete").click()
+    m8.wait_for_timeout(200)
+    assert m8.get_by_text("Fix before using").count() == 0
+
+    # Week pattern: Monday and Thursday strength, Saturday hike.
+    for day, title in [("Mon", "Strength C"), ("Thu", "Strength C"), ("Sat", "Hill hike")]:
+        m8.locator("button.day-row", has_text=day).click()
+        m8.get_by_role("dialog").get_by_role("button", name=title).click()
+        m8.get_by_role("dialog").get_by_role("button", name="Save").click()
+    # Six weeks; week 1 hike target; week 4 lighter; week 2 Tuesday strength too.
+    m8.get_by_role("button", name="More: Weeks").click()
+    m8.get_by_role("button", name="More: Weeks").click()
+    m8.get_by_role("button", name="Week 1 Block 1").click()
+    m8.get_by_label("Hike length").fill("3 h")
+    m8.get_by_label("Hike pack").fill("8 kg")
+    m8.get_by_label("Hike pack").blur()
+    m8.get_by_role("button", name="Next week").click()
+    m8.locator("button.day-row", has_text="Tue").click()
+    m8.get_by_role("dialog").get_by_role("button", name="Strength C").click()
+    m8.get_by_role("dialog").get_by_role("button", name="Save").click()
+    shot(m8, "m8-week-2")
+    m8.get_by_role("button", name="Next week").click()
+    m8.get_by_role("button", name="Next week").click()
+    m8.get_by_role("radio", name="Lighter").click()
+    m8.get_by_role("button", name="Spring cycle").click()
+    m8.get_by_label("Lighter weeks: cut gym sets and minutes by a third").check()
+    shot(m8, "m8-editor-filled")
+
+    m8.get_by_role("button", name="Use this cycle").click()
+    shot(m8, "m8-use-dialog", full=False)
+    m8.get_by_role("dialog").get_by_role("button", name="Use it").click()
+    m8.wait_for_timeout(300)
+    assert m8.get_by_text("Using Spring cycle.").is_visible()
+
+    m8.goto(BASE + "?date=2027-02-15")
+    m8.wait_for_timeout(300)
+    assert m8.get_by_text("Week 1 of 6").is_visible()
+    assert m8.get_by_role("heading", name="Strength C").is_visible()
+    shot(m8, "m8-today-cycle")
+    m8.get_by_role("button", name="Log session").first.click()
+    m8.get_by_label("Back squat, set 1, kg").fill("80")
+    m8.get_by_role("button", name="Save log").click()
+    m8.goto(BASE + "?date=2027-03-08")  # week 4: lighter, 5 sets → 3
+    assert m8.get_by_text("Sets and minutes are cut by a third this week.").is_visible()
+    assert m8.get_by_label("3 sets of 5").is_visible()
+    shot(m8, "m8-week4-lighter")
+    m8.goto(BASE + "?date=2027-02-20")
+    assert m8.get_by_text("3 h with a 8 kg pack").is_visible()
+    tab(m8, "Week")
+    shot(m8, "m8-week-tab-cycle")
+    tab(m8, "More")
+    m8.locator("#cycles").get_by_role("button", name="Use", exact=True).click()
+    m8.get_by_role("dialog").get_by_role("button", name="Use it").click()
+    m8.wait_for_timeout(200)
+    shot(m8, "m8-back-to-built-in", full=False)
+    tab(m8, "Today")
+    assert m8.get_by_role("heading", name="Plan complete").is_visible(), "12-week plan not back"
+
     bad = new_page(CORRUPT)
     bad.goto(BASE + "?date=2026-11-16")
     shot(bad, "log-corrupt-data")

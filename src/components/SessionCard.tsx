@@ -1,15 +1,8 @@
 import type { ReactNode } from 'react';
-import type { PlanWeek } from '../schema';
 import { ChevronRightIcon } from '@primer/octicons-react';
 import type { ResolvedExercise, ResolvedSession } from '../plan';
 import { GAP_LIMIT, pctText } from '../tests';
 import { useLogActions } from '../logContext';
-
-const BLOCK_HINT: Record<1 | 2 | 3, string> = {
-  1: 'Moderate weight, 2–3 reps in reserve.',
-  2: 'Main lifts: add a little weight each week.',
-  3: 'Main lifts: hold the weight.',
-};
 
 function minutes([lo, hi]: [number, number]): string {
   return lo === hi ? `${lo} min` : `${lo}–${hi} min`;
@@ -42,12 +35,13 @@ function IntervalsOff({ off }: { off: NonNullable<ResolvedSession['intervalsOff'
 /** One session as a GitHub-style box: header row, then list rows. */
 export function SessionCard({
   session,
-  week,
+  hint,
   footer,
   onEditExercise,
 }: {
   session: ResolvedSession;
-  week: PlanWeek;
+  /** The block's line under strength sessions (plan rules). */
+  hint?: string;
   footer?: ReactNode;
   /** When set, each exercise row opens the exercise editor. */
   onEditExercise?: (ex: ResolvedExercise) => void;
@@ -62,7 +56,7 @@ export function SessionCard({
 
       {s.exercises && (
         <>
-          <p className="box-row box-row--note">{BLOCK_HINT[week.block]}</p>
+          {hint && <p className="box-row box-row--note">{hint}</p>}
           <ul>
             {s.exercises.map((ex) => {
               const body = (

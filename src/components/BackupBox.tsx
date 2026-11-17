@@ -46,11 +46,12 @@ function whenText(iso: string): string {
   return `${shortDate(localISO(d))}, ${hm}`;
 }
 
-function contentsText(s: Pick<Summary, 'logs' | 'changes' | 'tests' | 'trips' | 'gear'>): string {
+function contentsText(s: Pick<Summary, 'logs' | 'changes' | 'tests' | 'trips' | 'gear' | 'cycles'>): string {
   const parts = [plural(s.logs, 'log'), plural(s.changes, 'plan change')];
   if (s.tests) parts.push(plural(s.tests, 'test result'));
   if (s.trips) parts.push(plural(s.trips, 'trip'));
   if (s.gear) parts.push(plural(s.gear, 'gear item'));
+  if (s.cycles) parts.push(plural(s.cycles, 'training cycle'));
   return `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}`;
 }
 
@@ -123,6 +124,11 @@ function ImportDialog({ file, onCancel, onDone }: { file: BackupFile; onCancel: 
             <th scope="row">Gear items</th>
             <td>{incoming.gear}</td>
             <td>{here.gear}</td>
+          </tr>
+          <tr className="box-row">
+            <th scope="row">Training cycles</th>
+            <td>{incoming.cycles}</td>
+            <td>{here.cycles}</td>
           </tr>
           <tr className="box-row">
             <th scope="row">Newest log</th>

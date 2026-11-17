@@ -1,4 +1,4 @@
-import type { ResolvedSession } from '../plan';
+import { HIKE_KINDS, type ResolvedSession } from '../plan';
 import { useAppData } from '../store';
 import { useLogActions } from '../logContext';
 import { tripLine, tripsOn } from '../trips';
@@ -8,8 +8,8 @@ import { RouteLink } from '../views/TripsView';
 export function TripRows({ session, date, today }: { session: ResolvedSession; date: string; today: string }) {
   const { trips } = useAppData();
   const { openTripForm } = useLogActions();
-  const hike = session.type === 'longHike' || session.type === 'longDayTest';
-  if (!hike && session.type !== 'recovery') return null;
+  const hike = HIKE_KINDS.includes(session.kind);
+  if (!hike && session.kind !== 'recovery') return null;
   const onDay = tripsOn(trips, date);
 
   if (onDay.length === 0) {

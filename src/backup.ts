@@ -66,6 +66,8 @@ export interface Summary {
   tests: number;
   trips: number;
   gear: number;
+  /** Training cycles built in the app. */
+  cycles: number;
   /** Date of the newest log, or null when there are none. */
   newestLog: ISODate | null;
 }
@@ -73,7 +75,7 @@ export interface Summary {
 export function summarize(data: AppData): Summary {
   let newestLog: ISODate | null = null;
   for (const l of data.logs) if (newestLog === null || l.date > newestLog) newestLog = l.date;
-  return { logs: data.logs.length, changes: data.overrides.length, tests: data.tests.length, trips: data.trips.length, gear: data.gear.length, newestLog };
+  return { logs: data.logs.length, changes: data.overrides.length, tests: data.tests.length, trips: data.trips.length, gear: data.gear.length, cycles: data.cycles.length, newestLog };
 }
 
 /** Lines that warn me before an older copy overwrites newer data on this device. */

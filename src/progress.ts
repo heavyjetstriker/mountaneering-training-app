@@ -2,7 +2,7 @@
 import type { Plan } from './schema';
 import type { SessionLog } from './logSchema';
 import type { ISODate } from './dates';
-import { getWeek, positionOn, TOTAL_WEEKS } from './plan';
+import { getWeek, HIKE_KINDS, kindOf, positionOn, totalWeeks } from './plan';
 
 const NUM = String.raw`(\d+(?:[.,]\d+)?)`;
 
@@ -13,7 +13,7 @@ export function weekOfLog(plan: Plan, date: ISODate): number | null {
 }
 
 function byWeek(plan: Plan, logs: SessionLog[]): SessionLog[][] {
-  const weeks: SessionLog[][] = Array.from({ length: TOTAL_WEEKS }, () => []);
+  const weeks: SessionLog[][] = Array.from({ length: totalWeeks(plan) }, () => []);
   for (const l of logs) {
     const w = weekOfLog(plan, l.date);
     if (w !== null) weeks[w - 1].push(l);
@@ -48,7 +48,7 @@ export interface PackWeek {
 export function packByWeek(plan: Plan, logs: SessionLog[]): PackWeek[] {
   return byWeek(plan, logs).map((ls, i) => {
     const packs = ls
-      .filter((l) => counted(l) && (l.type === 'longHike' || l.type === 'longDayTest') && l.packKg !== undefined)
+      .filter((l) => counted(l) && HIKE_KINDS.includes(kindOf(plan, l.type)) && l.packKg !== undefined)
       .map((l) => l.packKg!);
     return {
       logged: packs.length ? Math.max(...packs) : null,

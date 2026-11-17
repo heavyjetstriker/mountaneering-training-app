@@ -1,7 +1,6 @@
-// A small chart across plan weeks 1–12: bars or lines, an optional planned band.
+// A small chart across the plan's weeks (1–12 for the 12-week plan): bars or lines, an optional planned band.
 // Hand-made SVG; colours are Primer tokens (data-pine / data-purple pass the palette checks
 // against the dark canvas). Tap a week to show it in the Week tab.
-import { TOTAL_WEEKS } from '../../plan';
 import { niceMax } from '../../progress';
 
 export interface Series {
@@ -43,7 +42,8 @@ export function WeekChart({
   const right = PAD.right + (kind === 'line' && series.length > 1 ? LABEL_ROOM : 0);
   const plotW = W - PAD.left - right;
   const plotH = H - PAD.top - PAD.bottom;
-  const slot = plotW / TOTAL_WEEKS;
+  const total = series[0]?.values.length ?? band?.length ?? 1; // one slot per plan week
+  const slot = plotW / total;
   const cx = (i: number) => PAD.left + slot * (i + 0.5);
 
   const all = [
@@ -166,16 +166,17 @@ export function WeekChart({
         })}
 
       {/* week numbers and tap targets */}
-      {Array.from({ length: TOTAL_WEEKS }, (_, i) => (
+      {Array.from({ length: total }, (_, i) => (
         <g key={`w${i}`}>
-          <text
+          {/* Long cycles: every other week number, plus the week on screen. */}
+          {(total <= 16 || i % 2 === 0 || i + 1 === selected) && <text
             className={i + 1 === selected ? 'chart-week chart-week--on' : 'chart-week'}
             x={cx(i)}
             y={H - 6}
             textAnchor="middle"
           >
             {i + 1}
-          </text>
+          </text>}
           <rect
             className="chart-hit"
             x={cx(i) - slot / 2}

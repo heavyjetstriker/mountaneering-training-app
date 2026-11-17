@@ -2,7 +2,7 @@ import type { Day } from '../schema';
 import type { ResolvedSession } from '../plan';
 import { useAppData } from '../store';
 import { useLogActions } from '../logContext';
-import { resultText, sortResults, TEST_TITLES, testsForSession } from '../tests';
+import { resultText, sortResults, TEST_TITLES } from '../tests';
 
 /** On a test session: Enter results, or the results saved for that day with Edit. */
 export function TestResultsRows({
@@ -20,7 +20,7 @@ export function TestResultsRows({
 }) {
   const { tests } = useAppData();
   const { openTestForm } = useLogActions();
-  const types = testsForSession(session.type);
+  const types = session.tests ?? [];
   if (types.length === 0 || date > today) return null;
 
   const sessionTarget = { date, week, day, type: session.type };

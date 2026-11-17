@@ -1,5 +1,5 @@
 // Log logic for milestone 2. Pure functions only, no React, no storage.
-import type { Exercise, PlanWeek, SessionType } from './schema';
+import type { Exercise, PlanWeek, SessionKind, SessionType } from './schema';
 import type { AppData, EffortZone, LoggedSet, SessionLog, SetUnit } from './logSchema';
 import type { ResolvedSession } from './plan';
 import { shortDate } from './dates';
@@ -8,13 +8,11 @@ import { shortDate } from './dates';
 
 export type LogKind = 'strength' | 'cardio' | 'test' | 'none';
 
-const STRENGTH: SessionType[] = ['strengthA', 'strengthB'];
-const TESTS: SessionType[] = ['testDriftVertical', 'testThreshold', 'testDriftRetest', 'longDayTest'];
-
-export function logKind(type: SessionType): LogKind {
-  if (type === 'rest') return 'none';
-  if (STRENGTH.includes(type)) return 'strength';
-  if (TESTS.includes(type)) return 'test';
+/** From the session's kind (plan.ts kindOf): tests and hike tests get status, minutes and a note only. */
+export function logKind(kind: SessionKind): LogKind {
+  if (kind === 'rest') return 'none';
+  if (kind === 'strength') return 'strength';
+  if (kind === 'test' || kind === 'hikeTest') return 'test';
   return 'cardio';
 }
 
@@ -201,29 +199,25 @@ export interface CardioPrefill {
 
 export function cardioPrefill(session: ResolvedSession, week: PlanWeek): CardioPrefill {
   const out: CardioPrefill = { minutes: null, packKg: null, effortZone: null, notePlaceholder: '' };
-  switch (session.type) {
-    case 'zone2Incline':
-    case 'zone2Long':
-    case 'zone2Stairs':
+  switch (session.kind) {
+    case 'cardio':
       out.minutes = session.cardio ? session.cardio.minutes[1] : null;
       out.effortZone = session.cardio ? zoneFrom(session.cardio.zone) : null;
-      if (session.type === 'zone2Long' && week.intervals && week.kind !== 'lighter') {
-        out.notePlaceholder = 'Intervals done?';
-      }
+      if (session.intervals || session.intervalsLocked) out.notePlaceholder = 'Intervals done?';
       break;
-    case 'me':
+    case 'endurance':
       out.minutes = upperMinutes(week.meVolume);
       out.packKg = lowerKg(week.meVolume);
       out.effortZone = zoneFrom(week.meVolume);
       break;
-    case 'longHike':
+    case 'hike':
       out.minutes = upperMinutes(week.longHike.hours);
       out.packKg = lowerKg(week.longHike.packKg);
       break;
     case 'recovery':
       out.minutes = upperMinutes(week.sunday);
       break;
-    case 'longDayTest':
+    case 'hikeTest':
       out.minutes = upperMinutes(session.instructions ?? '');
       break;
     default:

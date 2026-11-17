@@ -44,6 +44,14 @@ starting a milestone; this file only holds the rules that must never be broken.
   "2 min rest" is preselected (Thursday). Charts are hand-made SVG on a weeks 1–12 axis; weeks come from
   log dates through the effective plan. Chart colours are Primer data tokens (pine, purple), checked
   against the dark canvas with the dataviz palette validator.
+- **Training cycles** (milestone 8, src/cycles.ts, pure and tested): plans I build in the app live in
+  `mta.data.cycles`; `activeCycle` (null = plan.json) picks the plan every screen uses (`activePlan`).
+  plan.json stays read-only; a cycle is a full plan in the same schema, edited directly and saved as I go.
+  Behaviour comes from each session's `kind` and the plan's `rules` (main lifts per block, block hints,
+  lighter cut, test-week halving) — never from session names. plan.json spells out the 12-week plan's own
+  rules, so it behaves exactly as before. A cycle with problems (`planIssues`) can't be used; if the active
+  one breaks, the 12-week plan is shown with a Flash. Override records carry `cycleId` (none = plan.json),
+  so plan changes stay with the cycle they were made in. AppData is still version 1 (new fields have defaults).
 - **Offline-first PWA** (vite-plugin-pwa, registerType 'prompt'): a new version only reloads when I
   tap Reload, never on the log screen. Device-only info (last export) lives in `mta.meta`.
 - Keep it simple: React + plain CSS, no state library, no router, no new dependencies without a reason.

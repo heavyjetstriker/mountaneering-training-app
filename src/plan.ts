@@ -1,9 +1,20 @@
 // Plan logic rules 1–3 and 7 from the build handoff. Pure functions only, no React.
-import type { Day, Exercise, Plan, PlanWeek, SessionType } from './schema';
+import type { Day, Exercise, Plan, PlanWeek, SessionKind, SessionType } from './schema';
 import type { OverrideRecord, OverrideScope, PlanOverride } from './logSchema';
 import { addDays, daysBetween, weekdayOf, DAY_ORDER, type ISODate } from './dates';
 
-export const TOTAL_WEEKS = 12;
+/** How many weeks the plan has (the 12-week plan: 12; a cycle: 1 to 24). */
+export function totalWeeks(plan: Plan): number {
+  return plan.weeks.length;
+}
+
+/** What a session does. Unknown ids count as rest, so a stale log or move never breaks a screen. */
+export function kindOf(plan: Plan, type: SessionType): SessionKind {
+  return plan.templates[type]?.kind ?? 'rest';
+}
+
+/** Sessions of these kinds are hikes: trips, pack prefill and the pack chart. */
+export const HIKE_KINDS: SessionKind[] = ['hike', 'hikeTest'];
 
 /** A whole-week pause (stored as a 'pause' override). */
 export interface Pause {
@@ -124,8 +135,9 @@ export function positionOn(plan: Plan, date: ISODate, pauses: Pause[] = changesO
   }
 
   const week = calendarWeek - shift;
-  if (week > TOTAL_WEEKS) {
-    return { status: 'complete', endedOn: addDays(plan.startDate, (TOTAL_WEEKS + shift) * 7 - 1) };
+  const total = totalWeeks(plan);
+  if (week > total) {
+    return { status: 'complete', endedOn: addDays(plan.startDate, (total + shift) * 7 - 1) };
   }
   return { status: 'active', week, day, weekStart: weekStartDate(plan, week, pauses) };
 }
@@ -177,18 +189,18 @@ export function slotsFor(plan: Plan, week: number, ctx: Context): Record<Day, Sl
   const w = getWeek(plan, week);
   const days = {} as Record<Day, Slot[]>;
   for (const d of DAY_ORDER) {
-    // Week 8: the drift retest only happens if intervals are still off.
-    days[d] = (w.dayChanges?.[d] ?? plan.weekly[d]).map((t) => ({
-      type: t === 'testDriftRetest' && ctx.intervals.on && !ctx.keepRetest ? 'zone2Long' : t,
-      from: d,
-    }));
+    // Week 8: the drift retest only happens if intervals are still off (else the normal Zone 2).
+    days[d] = (w.dayChanges?.[d] ?? plan.weekly[d]).map((t) => {
+      const instead = plan.templates[t]?.onlyIfIntervalsOff;
+      return { type: instead && ctx.intervals.on && !ctx.keepRetest ? instead : t, from: d };
+    });
   }
   for (const m of changesOf(plan).moves[week] ?? []) {
     if (m.from === m.to) continue;
-    const moving = days[m.from].filter((s) => s.type !== 'rest');
+    const moving = days[m.from].filter((s) => kindOf(plan, s.type) !== 'rest');
     if (moving.length === 0) continue;
     days[m.from] = [];
-    days[m.to] = [...days[m.to].filter((s) => s.type !== 'rest'), ...moving];
+    days[m.to] = [...days[m.to].filter((s) => kindOf(plan, s.type) !== 'rest'), ...moving];
   }
   for (const d of DAY_ORDER) if (days[d].length === 0) days[d] = [{ type: 'rest', from: d }];
   return days;
@@ -205,17 +217,16 @@ export function originDay(plan: Plan, week: number, day: Day, type: SessionType,
 
 // ---------- Rule 3: block rules ----------
 
-const ZONE2: SessionType[] = ['zone2Incline', 'zone2Long', 'zone2Stairs'];
-const STRENGTH: SessionType[] = ['strengthA', 'strengthB'];
 const MON_TO_THU: Day[] = ['mon', 'tue', 'wed', 'thu'];
 
 export type Adjustment = 'none' | 'lighter' | 'halved';
 
-function adjustmentFor(w: PlanWeek, type: SessionType, day: Day): Adjustment {
-  const gym = STRENGTH.includes(type) || ZONE2.includes(type);
-  if (!gym) return 'none';
-  if (w.kind === 'lighter') return 'lighter';
-  if (w.kind === 'test' && MON_TO_THU.includes(day)) return 'halved';
+/** Gym sessions (strength and cardio) get the lighter-week and test-week cuts, if the plan's rules say so. */
+function adjustmentFor(plan: Plan, w: PlanWeek, type: SessionType, day: Day): Adjustment {
+  const kind = kindOf(plan, type);
+  if (kind !== 'strength' && kind !== 'cardio') return 'none';
+  if (w.kind === 'lighter' && plan.rules?.lighterCut) return 'lighter';
+  if (w.kind === 'test' && plan.rules?.testWeekHalve && MON_TO_THU.includes(day)) return 'halved';
   return 'none';
 }
 
@@ -235,11 +246,16 @@ function adjustMinutes([lo, hi]: [number, number], adj: Adjustment): [number, nu
   return [lo, hi];
 }
 
-/** Block 2: main lifts 4 × 4. Block 3: main lifts 3 × 4, hold the weight. */
-function applyBlock(ex: Exercise, block: 1 | 2 | 3): Exercise {
-  if (!ex.mainLift || block === 1) return ex;
-  if (block === 2) return { ...ex, sets: 4, reps: '4' };
-  return { ...ex, sets: 3, reps: '4' };
+/** The plan's main-lift rule for a block (12-week plan: block 2 = 4 × 4, block 3 = 3 × 4). Else as written. */
+function applyBlock(plan: Plan, ex: Exercise, block: number): Exercise {
+  const rule = plan.rules?.mainLifts?.[String(block)];
+  if (!ex.mainLift || !rule) return ex;
+  return { ...ex, sets: rule.sets, reps: rule.reps };
+}
+
+/** The line shown under strength sessions for a block, if the plan has one. */
+export function blockHint(plan: Plan, block: number): string | undefined {
+  return plan.rules?.blockHints?.[String(block)] || undefined;
 }
 
 export type ResolvedExercise = Exercise & {
@@ -258,7 +274,7 @@ function finishExercise(
   ex: Exercise,
   slotId: string,
 ): ResolvedExercise {
-  let out: Exercise = applyBlock(ex, w.block);
+  let out: Exercise = applyBlock(plan, ex, w.block);
   let setsForThisWeek = false;
   for (const e of inScopeOrder(changesOf(plan).edits, w.week)) {
     if (e.sessionType !== type || e.exerciseId !== ex.id) continue;
@@ -294,8 +310,11 @@ function exerciseInSlot(plan: Plan, week: number, type: SessionType, base: Exerc
 
 export interface ResolvedSession {
   type: SessionType;
+  kind: SessionKind;
   title: string;
   adjustment: Adjustment;
+  /** Test sessions: which results to enter. */
+  tests?: ('drift' | 'threshold' | 'vertical')[];
   exercises?: ResolvedExercise[];
   cardio?: { minutes: [number, number]; zone: string; where: string };
   /** Tuesday intervals: number of 4-min reps at Zone 4. */
@@ -321,8 +340,9 @@ export function resolveSession(
 ): ResolvedSession {
   const w = getWeek(plan, week);
   const tpl = plan.templates[type];
-  const adjustment = adjustmentFor(w, type, originDay(plan, week, day, type, ctx));
-  const out: ResolvedSession = { type, title: tpl.title, adjustment, instructions: tpl.instructions };
+  const adjustment = adjustmentFor(plan, w, type, originDay(plan, week, day, type, ctx));
+  const out: ResolvedSession = { type, kind: tpl.kind, title: tpl.title, adjustment, instructions: tpl.instructions };
+  if (tpl.tests?.length) out.tests = tpl.tests;
 
   if (tpl.exercises) {
     out.exercises = tpl.exercises.map((base) =>
@@ -332,7 +352,7 @@ export function resolveSession(
   if (tpl.cardio) {
     out.cardio = { ...tpl.cardio, minutes: adjustMinutes(tpl.cardio.minutes, adjustment) };
   }
-  if (type === 'zone2Long' && w.intervals && w.kind !== 'lighter') {
+  if (tpl.intervals && w.intervals && w.kind !== 'lighter') {
     if (ctx.intervals.on) {
       out.intervals = w.intervals;
       if (tpl.intervalsHow) out.intervalsHow = tpl.intervalsHow;
@@ -341,9 +361,12 @@ export function resolveSession(
       out.intervalsOff = ctx.intervals;
     }
   }
-  if (type === 'me') out.target = w.meVolume;
-  if (type === 'longHike') out.target = `${w.longHike.hours} with a ${w.longHike.packKg} pack`;
-  if (type === 'recovery') out.target = w.sunday;
+  // The week's own targets (plan weeks: meVolume = endurance, longHike = hike, sunday = recovery).
+  if (tpl.kind === 'endurance' && w.meVolume) out.target = w.meVolume;
+  if (tpl.kind === 'hike' && w.longHike.hours) {
+    out.target = w.longHike.packKg ? `${w.longHike.hours} with a ${w.longHike.packKg} pack` : w.longHike.hours;
+  }
+  if (tpl.kind === 'recovery' && w.sunday) out.target = w.sunday;
   return out;
 }
 
@@ -363,11 +386,20 @@ export function resolveSwap(
   const ex = plan.exerciseLibrary.find((e) => e.id === swapId);
   if (!ex) return null;
   const w = getWeek(plan, week);
-  return finishExercise(plan, w, type, adjustmentFor(w, type, originDay(plan, week, day, type, ctx)), ex, swapId);
+  return finishExercise(plan, w, type, adjustmentFor(plan, w, type, originDay(plan, week, day, type, ctx)), ex, swapId);
 }
 
 export function sessionsFor(plan: Plan, week: number, day: Day, ctx: Context): ResolvedSession[] {
   return sessionTypesFor(plan, week, day, ctx).map((t) => resolveSession(plan, week, day, t, ctx));
+}
+
+/**
+ * Which of a week's targets the plan uses, named after its sessions: the hike (hours and pack),
+ * the recovery text and the endurance text. null = no session of that kind, so the field is hidden.
+ */
+export function weekTargetNames(plan: Plan): { hike: string | null; recovery: string | null; endurance: string | null } {
+  const first = (kind: SessionKind) => Object.values(plan.templates).find((t) => t.kind === kind)?.title ?? null;
+  return { hike: first('hike'), recovery: first('recovery'), endurance: first('endurance') };
 }
 
 export function blockLabel(w: PlanWeek): string {
